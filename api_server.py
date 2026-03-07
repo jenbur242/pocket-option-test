@@ -284,6 +284,38 @@ def verify_telegram_otp():
     except Exception as e:
         return jsonify({'error': f'OTP verification failed: {str(e)}'}), 500
 
+@app.route('/api/telegram/delete-session', methods=['POST'])
+def delete_telegram_session():
+    """
+    Delete Telegram session files
+    """
+    try:
+        session_files = [
+            'session_testpob1234.session',
+            'session_testpob1234.session-journal'
+        ]
+        
+        deleted_files = []
+        for session_file in session_files:
+            if os.path.exists(session_file):
+                os.remove(session_file)
+                deleted_files.append(session_file)
+        
+        if deleted_files:
+            return jsonify({
+                'success': True,
+                'message': f'Deleted {len(deleted_files)} session file(s)',
+                'deleted_files': deleted_files
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'message': 'No session files found to delete'
+            })
+    
+    except Exception as e:
+        return jsonify({'error': f'Failed to delete session: {str(e)}'}), 500
+
 @app.route('/api/telegram/otp', methods=['POST'])
 def send_otp():
     """
