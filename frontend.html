@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pocket Option Trading Bot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #38a169;
+        }
+        
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #e53e3e;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .status-active {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .status-inactive {
+            background: #cbd5e0;
+            color: #4a5568;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-card h3 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card p {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .trade-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .trade-table th, .trade-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .trade-table th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        
+        .trade-result-win {
+            color: #48bb78;
+            font-weight: 600;
+        }
+        
+        .trade-result-loss {
+            color: #f56565;
+            font-weight: 600;
+        }
+        
+        .trade-result-pending {
+            color: #ed8936;
+            font-weight: 600;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border-left: 4px solid #48bb78;
+        }
+        
+        .alert-error {
+            background: #fed7d7;
+            color: #742a2a;
+            border-left: 4px solid #f56565;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Pocket Option Trading Bot</h1>
+            <p>Automated Trading with Telegram Signals</p>
+        </div>
+        
+        <!-- Configuration Card -->
+        <div class="card">
+            <h2>⚙️ Configuration</h2>
+            
+            <div id="alertContainer"></div>
+            
+            <div class="form-group">
+                <label for="ssid">SSID (from PocketOption WebSocket)</label>
+                <input type="text" id="ssid" placeholder='42["auth",{"session":"..."}]'>
+            </div>
+            
+            <button class="btn btn-primary" onclick="saveSsid()">Save SSID</button>
+        </div>
+        
+        <!-- Telegram Configuration Card -->
+        <div class="card">
+            <h2>📱 Telegram Configuration</h2>
+            
+            <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="text" id="phone" placeholder="+1234567890">
+            </div>
+            
+            <div class="form-group">
+                <label for="apiId">Telegram API ID</label>
+                <input type="text" id="apiId" placeholder="12345678">
+            </div>
+            
+            <div class="form-group">
+                <label for="apiHash">Telegram API Hash</label>
+                <input type="text" id="apiHash" placeholder="abcdef1234567890">
+            </div>
+            
+            <button class="btn btn-primary" onclick="saveTelegram()">Save Telegram Config</button>
+        </div>
+        
+        <!-- Trading Control Card -->
+        <div class="card">
+            <h2>🎮 Trading Control</h2>
+            
+            <div class="form-group">
+                <label for="initialAmount">Initial Trade Amount ($)</label>
+                <input type="number" id="initialAmount" value="1.0" step="0.1" min="0.1">
+                <small style="color: #718096;">Base amount for first trade</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="multiplier">Martingale Multiplier</label>
+                <input type="number" id="multiplier" value="2.5" step="0.1" min="1.1">
+                <small style="color: #718096;">Amount multiplier after each loss</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="martingaleStep">Starting Martingale Step</label>
+                <input type="number" id="martingaleStep" value="0" step="1" min="0" max="10">
+                <small style="color: #718096;">0 = start fresh, 1+ = resume from step</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="accountType">Account Type</label>
+                <select id="accountType">
+                    <option value="true">Demo</option>
+                    <option value="false">Real</option>
+                </select>
+            </div>
+            
+            <div class="form-group" style="background: #f7fafc; padding: 15px; border-radius: 5px; margin-top: 15px;">
+                <strong>Current Trade Amount: </strong>
+                <span id="currentTradeAmount" style="color: #667eea; font-size: 1.2em; font-weight: 600;">$1.00</span>
+                <br>
+                <small style="color: #718096;">= Initial Amount × (Multiplier ^ Step)</small>
+            </div>
+            
+            <!-- Martingale Preview -->
+            <div style="background: #edf2f7; padding: 15px; border-radius: 5px; margin-top: 15px;">
+                <strong style="color: #2d3748;">📊 Martingale Preview (Next 5 Steps):</strong>
+                <div id="martingalePreview" style="margin-top: 10px; font-family: monospace; font-size: 0.9em; color: #4a5568;">
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button class="btn btn-success" onclick="startTrading()">▶️ Start Trading</button>
+                <button class="btn btn-danger" onclick="stopTrading()">⏹️ Stop Trading</button>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <strong>Status: </strong>
+                <span id="tradingStatus" class="status-badge status-inactive">Inactive</span>
+            </div>
+        </div>
+        
+        <!-- Statistics Card -->
+        <div class="card">
+            <h2>📊 Trading Statistics</h2>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3 id="totalTrades">0</h3>
+                    <p>Total Trades</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="winCount">0</h3>
+                    <p>Wins</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="lossCount">0</h3>
+                    <p>Losses</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="winRate">0%</h3>
+                    <p>Win Rate</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="totalProfit">$0.00</h3>
+                    <p>Total Profit</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="currentStep">0</h3>
+                    <p>Current Step</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Trade Results Card -->
+        <div class="card">
+            <h2>📈 Recent Trades</h2>
+            
+            <table class="trade-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Asset</th>
+                        <th>Direction</th>
+                        <th>Amount</th>
+                        <th>Step</th>
+                        <th>Result</th>
+                    </tr>
+                </thead>
+                <tbody id="tradesTableBody">
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #a0aec0;">No trades yet</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        
+        function showAlert(message, type = 'success') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            alertContainer.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+        
+        async function saveSsid() {
+            const ssid = document.getElementById('ssid').value;
+            
+            if (!ssid) {
+                showAlert('Please enter SSID', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/ssid`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ssid })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showAlert('SSID saved successfully!', 'success');
+                } else {
+                    showAlert(data.error || 'Failed to save SSID', 'error');
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+            }
+        }
+        
+        async function saveTelegram() {
+            const phone = document.getElementById('phone').value;
+            const apiId = document.getElementById('apiId').value;
+            const apiHash = document.getElementById('apiHash').value;
+            
+            if (!phone || !apiId || !apiHash) {
+                showAlert('Please fill all Telegram fields', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/telegram/otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, api_id: apiId, api_hash: apiHash })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showAlert('Telegram config saved!', 'success');
+                } else {
+                    showAlert(data.error || 'Failed to save config', 'error');
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+            }
+        }
+        
+        async function startTrading() {
+            const initialAmount = parseFloat(document.getElementById('initialAmount').value);
+            const isDemo = document.getElementById('accountType').value === 'true';
+            const multiplier = parseFloat(document.getElementById('multiplier').value);
+            const martingaleStep = parseInt(document.getElementById('martingaleStep').value);
+            
+            // Validate inputs
+            if (initialAmount <= 0) {
+                showAlert('Initial amount must be greater than 0', 'error');
+                return;
+            }
+            
+            if (multiplier < 1.1) {
+                showAlert('Multiplier must be at least 1.1', 'error');
+                return;
+            }
+            
+            if (martingaleStep < 0 || martingaleStep > 10) {
+                showAlert('Martingale step must be between 0 and 10', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/trading/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        initial_amount: initialAmount, 
+                        is_demo: isDemo, 
+                        multiplier: multiplier,
+                        martingale_step: martingaleStep
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showAlert(`Trading started! Current trade amount: $${data.config.current_trade_amount.toFixed(2)}`, 'success');
+                    updateStatus();
+                } else {
+                    showAlert(data.error || 'Failed to start trading', 'error');
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+            }
+        }
+        
+        async function stopTrading() {
+            try {
+                const response = await fetch(`${API_BASE}/trading/stop`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showAlert('Trading stopped!', 'success');
+                    updateStatus();
+                } else {
+                    showAlert(data.error || 'Failed to stop trading', 'error');
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+            }
+        }
+        
+        async function updateStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/trading/status`);
+                const data = await response.json();
+                
+                const statusBadge = document.getElementById('tradingStatus');
+                if (data.active) {
+                    statusBadge.textContent = 'Active';
+                    statusBadge.className = 'status-badge status-active';
+                } else {
+                    statusBadge.textContent = 'Inactive';
+                    statusBadge.className = 'status-badge status-inactive';
+                }
+            } catch (error) {
+                console.error('Error updating status:', error);
+            }
+        }
+        
+        async function updateAnalysis() {
+            try {
+                const response = await fetch(`${API_BASE}/trades/analysis`);
+                const data = await response.json();
+                
+                document.getElementById('totalTrades').textContent = data.total_trades || 0;
+                document.getElementById('winCount').textContent = data.wins || 0;
+                document.getElementById('lossCount').textContent = data.losses || 0;
+                document.getElementById('winRate').textContent = (data.win_rate || 0) + '%';
+                document.getElementById('totalProfit').textContent = '$' + (data.total_profit || 0).toFixed(2);
+                document.getElementById('currentStep').textContent = data.current_step || 0;
+            } catch (error) {
+                console.error('Error updating analysis:', error);
+            }
+        }
+        
+        async function updateTrades() {
+            try {
+                const response = await fetch(`${API_BASE}/trades/results?limit=10`);
+                const data = await response.json();
+                
+                const tbody = document.getElementById('tradesTableBody');
+                
+                if (data.trades && data.trades.length > 0) {
+                    tbody.innerHTML = data.trades.map(trade => `
+                        <tr>
+                            <td>${trade.time}</td>
+                            <td>${trade.asset}</td>
+                            <td>${trade.direction}</td>
+                            <td>$${trade.amount.toFixed(2)}</td>
+                            <td>${trade.step}</td>
+                            <td class="trade-result-${trade.result}">${trade.result.toUpperCase()}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #a0aec0;">No trades yet</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error updating trades:', error);
+            }
+        }
+        
+        // Auto-refresh every 2 seconds
+        setInterval(() => {
+            updateStatus();
+            updateAnalysis();
+            updateTrades();
+        }, 2000);
+        
+        // Update current trade amount when inputs change
+        function updateCurrentTradeAmount() {
+            const initialAmount = parseFloat(document.getElementById('initialAmount').value) || 1.0;
+            const multiplier = parseFloat(document.getElementById('multiplier').value) || 2.5;
+            const step = parseInt(document.getElementById('martingaleStep').value) || 0;
+            
+            const currentAmount = initialAmount * Math.pow(multiplier, step);
+            document.getElementById('currentTradeAmount').textContent = '$' + currentAmount.toFixed(2);
+            
+            // Update martingale preview
+            let previewHTML = '';
+            for (let i = 0; i < 5; i++) {
+                const previewStep = step + i;
+                const previewAmount = initialAmount * Math.pow(multiplier, previewStep);
+                const isCurrent = i === 0;
+                const style = isCurrent ? 'color: #667eea; font-weight: 600;' : '';
+                const arrow = isCurrent ? '→ ' : '  ';
+                previewHTML += `<div style="${style}">${arrow}Step ${previewStep}: $${previewAmount.toFixed(2)}</div>`;
+            }
+            document.getElementById('martingalePreview').innerHTML = previewHTML;
+        }
+        
+        // Add event listeners to update current trade amount
+        document.getElementById('initialAmount').addEventListener('input', updateCurrentTradeAmount);
+        document.getElementById('multiplier').addEventListener('input', updateCurrentTradeAmount);
+        document.getElementById('martingaleStep').addEventListener('input', updateCurrentTradeAmount);
+        
+        // Initial load
+        updateStatus();
+        updateAnalysis();
+        updateTrades();
+        updateCurrentTradeAmount();
+    </script>
+</body>
+</html>
