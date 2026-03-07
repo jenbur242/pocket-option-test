@@ -802,11 +802,14 @@ def run_trading_bot(initial_amount, is_demo, multiplier, martingale_step):
         loop.close()
 
 if __name__ == '__main__':
+    # Get port from environment variable (Railway) or default to 5000
+    port = int(os.getenv('PORT', 5000))
+    
     print("=" * 60)
     print("🚀 Pocket Option Trading API Server")
     print("=" * 60)
-    print("📡 Server starting on http://localhost:5000")
-    print("🌐 Frontend available at http://localhost:5000")
+    print(f"📡 Server starting on port {port}")
+    print(f"🌐 Frontend available at http://localhost:{port}")
     print("=" * 60)
     print("📚 API Endpoints:")
     print("   POST /api/ssid - Set SSID")
@@ -819,9 +822,11 @@ if __name__ == '__main__':
     print("   GET  /api/trades/analysis - Get trade analysis")
     print("=" * 60)
     print("💡 Quick Start:")
-    print("   1. Open http://localhost:5000 in your browser")
+    print(f"   1. Open http://localhost:{port} in your browser")
     print("   2. Configure SSID and Telegram credentials")
     print("   3. Set trading parameters and click Start Trading")
     print("=" * 60)
     
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Disable debug mode in production
+    is_production = os.getenv('RAILWAY_ENVIRONMENT') is not None
+    app.run(host='0.0.0.0', port=port, debug=not is_production)

@@ -683,7 +683,8 @@
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:5000/api';
+        // Use current domain for API calls (works both locally and on Railway)
+        const API_BASE = window.location.origin + '/api';
         let currentCsvFile = '';
         
         // Section Navigation
