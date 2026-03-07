@@ -1,0 +1,7 @@
+Bot started at 2026-03-07 22:03:51
+Connected to: Test
+Processed 50 historical messages (skipped for execution)
+⏳ Waiting for new signals...
+
+Note: Only NEW messages received after bot startup will be executed.
+This prevents multiple old signals from executing simultaneously.

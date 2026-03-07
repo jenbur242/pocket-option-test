@@ -1,386 +1,768 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="dark" lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pocket Option Trading Bot</title>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Deep Space | Pocket Option Trading Bot</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3b82f6",
+                        "success": "#10b981",
+                        "danger": "#e11d48",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#0a0f18",
+                        "surface": "#161e2d",
+                        "border-muted": "#1e293b"
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        .glass-card {
+            background: rgba(22, 30, 45, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
+        .glow-primary {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
         }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
         }
-        
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 30px;
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
         }
-        
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-        
-        .card {
-            background: white;
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #1e293b;
             border-radius: 10px;
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        
-        .card h2 {
-            color: #667eea;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 10px;
-        }
-        
-        .form-group {
-            margin-bottom: 15px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: #333;
-        }
-        
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        
-        .form-group input:focus, .form-group select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .btn {
-            padding: 12px 30px;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #5568d3;
-        }
-        
-        .btn-success {
-            background: #48bb78;
-            color: white;
-        }
-        
-        .btn-success:hover {
-            background: #38a169;
-        }
-        
-        .btn-danger {
-            background: #f56565;
-            color: white;
-        }
-        
-        .btn-danger:hover {
-            background: #e53e3e;
-        }
-        
-        .status-badge {
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-        }
-        
-        .status-active {
-            background: #48bb78;
-            color: white;
-        }
-        
-        .status-inactive {
-            background: #cbd5e0;
-            color: #4a5568;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-        }
-        
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-        }
-        
-        .stat-card h3 {
-            font-size: 2em;
-            margin-bottom: 5px;
-        }
-        
-        .stat-card p {
-            font-size: 0.9em;
-            opacity: 0.9;
-        }
-        
-        .trade-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        
-        .trade-table th, .trade-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        
-        .trade-table th {
-            background: #f7fafc;
-            font-weight: 600;
-            color: #4a5568;
-        }
-        
-        .trade-result-win {
-            color: #48bb78;
-            font-weight: 600;
-        }
-        
-        .trade-result-loss {
-            color: #f56565;
-            font-weight: 600;
-        }
-        
-        .trade-result-pending {
-            color: #ed8936;
-            font-weight: 600;
-        }
-        
-        .alert {
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-        }
-        
-        .alert-success {
-            background: #c6f6d5;
-            color: #22543d;
-            border-left: 4px solid #48bb78;
-        }
-        
-        .alert-error {
-            background: #fed7d7;
-            color: #742a2a;
-            border-left: 4px solid #f56565;
-        }
-        
-        .hidden {
-            display: none;
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🤖 Pocket Option Trading Bot</h1>
-            <p>Automated Trading with Telegram Signals</p>
-        </div>
-        
-        <!-- Configuration Card -->
-        <div class="card">
-            <h2>⚙️ Configuration</h2>
-            
-            <div id="alertContainer"></div>
-            
-            <div class="form-group">
-                <label for="ssid">SSID (from PocketOption WebSocket)</label>
-                <input type="text" id="ssid" placeholder='42["auth",{"session":"..."}]'>
-            </div>
-            
-            <button class="btn btn-primary" onclick="saveSsid()">Save SSID</button>
-        </div>
-        
-        <!-- Telegram Configuration Card -->
-        <div class="card">
-            <h2>📱 Telegram Configuration</h2>
-            
-            <div class="form-group">
-                <label for="phone">Phone Number</label>
-                <input type="text" id="phone" placeholder="+1234567890">
-            </div>
-            
-            <div class="form-group">
-                <label for="apiId">Telegram API ID</label>
-                <input type="text" id="apiId" placeholder="12345678">
-            </div>
-            
-            <div class="form-group">
-                <label for="apiHash">Telegram API Hash</label>
-                <input type="text" id="apiHash" placeholder="abcdef1234567890">
-            </div>
-            
-            <button class="btn btn-primary" onclick="saveTelegram()">Save Telegram Config</button>
-        </div>
-        
-        <!-- Trading Control Card -->
-        <div class="card">
-            <h2>🎮 Trading Control</h2>
-            
-            <div class="form-group">
-                <label for="initialAmount">Initial Trade Amount ($)</label>
-                <input type="number" id="initialAmount" value="1.0" step="0.1" min="0.1">
-                <small style="color: #718096;">Base amount for first trade</small>
-            </div>
-            
-            <div class="form-group">
-                <label for="multiplier">Martingale Multiplier</label>
-                <input type="number" id="multiplier" value="2.5" step="0.1" min="1.1">
-                <small style="color: #718096;">Amount multiplier after each loss</small>
-            </div>
-            
-            <div class="form-group">
-                <label for="martingaleStep">Starting Martingale Step</label>
-                <input type="number" id="martingaleStep" value="0" step="1" min="0" max="10">
-                <small style="color: #718096;">0 = start fresh, 1+ = resume from step</small>
-            </div>
-            
-            <div class="form-group">
-                <label for="accountType">Account Type</label>
-                <select id="accountType">
-                    <option value="true">Demo</option>
-                    <option value="false">Real</option>
-                </select>
-            </div>
-            
-            <div class="form-group" style="background: #f7fafc; padding: 15px; border-radius: 5px; margin-top: 15px;">
-                <strong>Current Trade Amount: </strong>
-                <span id="currentTradeAmount" style="color: #667eea; font-size: 1.2em; font-weight: 600;">$1.00</span>
-                <br>
-                <small style="color: #718096;">= Initial Amount × (Multiplier ^ Step)</small>
-            </div>
-            
-            <!-- Martingale Preview -->
-            <div style="background: #edf2f7; padding: 15px; border-radius: 5px; margin-top: 15px;">
-                <strong style="color: #2d3748;">📊 Martingale Preview (Next 5 Steps):</strong>
-                <div id="martingalePreview" style="margin-top: 10px; font-family: monospace; font-size: 0.9em; color: #4a5568;">
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased overflow-hidden">
+    <div class="flex h-screen w-full">
+        <!-- Sidebar -->
+        <aside class="w-20 lg:w-64 flex flex-col bg-surface border-r border-border-muted transition-all duration-300">
+            <div class="p-6 flex items-center gap-3">
+                <div class="bg-primary rounded-xl p-2 flex items-center justify-center glow-primary">
+                    <span class="material-symbols-outlined text-white">rocket_launch</span>
+                </div>
+                <div class="hidden lg:block">
+                    <h1 class="font-bold text-lg tracking-tight">Deep Space</h1>
+                    <p class="text-xs text-slate-400 font-medium uppercase tracking-widest">Enterprise V2</p>
                 </div>
             </div>
             
-            <div style="margin-top: 20px;">
-                <button class="btn btn-success" onclick="startTrading()">▶️ Start Trading</button>
-                <button class="btn btn-danger" onclick="stopTrading()">⏹️ Stop Trading</button>
-            </div>
+            <nav class="flex-1 px-4 space-y-2 mt-4">
+                <a class="flex items-center gap-4 px-4 py-3 bg-primary/10 text-primary rounded-xl group" href="#" onclick="showSection('dashboard'); return false;">
+                    <span class="material-symbols-outlined fill-1">dashboard</span>
+                    <span class="hidden lg:block font-semibold">Dashboard</span>
+                </a>
+                <a class="flex items-center gap-4 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-100 rounded-xl transition-all" href="#" onclick="showSection('config'); return false;">
+                    <span class="material-symbols-outlined">settings</span>
+                    <span class="hidden lg:block font-medium">Configuration</span>
+                </a>
+                <a class="flex items-center gap-4 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-100 rounded-xl transition-all" href="#" onclick="showSection('history'); return false;">
+                    <span class="material-symbols-outlined">history_edu</span>
+                    <span class="hidden lg:block font-medium">History</span>
+                </a>
+                <a class="flex items-center gap-4 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-100 rounded-xl transition-all" href="#" onclick="showSection('signals'); return false;">
+                    <span class="material-symbols-outlined">electric_bolt</span>
+                    <span class="hidden lg:block font-medium">Signals</span>
+                </a>
+            </nav>
             
-            <div style="margin-top: 20px;">
-                <strong>Status: </strong>
-                <span id="tradingStatus" class="status-badge status-inactive">Inactive</span>
-            </div>
-        </div>
-        
-        <!-- Statistics Card -->
-        <div class="card">
-            <h2>📊 Trading Statistics</h2>
-            
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <h3 id="totalTrades">0</h3>
-                    <p>Total Trades</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="winCount">0</h3>
-                    <p>Wins</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="lossCount">0</h3>
-                    <p>Losses</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="winRate">0%</h3>
-                    <p>Win Rate</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="totalProfit">$0.00</h3>
-                    <p>Total Profit</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="currentStep">0</h3>
-                    <p>Current Step</p>
+            <div class="p-4 border-t border-border-muted">
+                <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-800 cursor-pointer">
+                    <div class="size-10 rounded-full border-2 border-primary/20 bg-primary/10 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-primary">person</span>
+                    </div>
+                    <div class="hidden lg:block overflow-hidden">
+                        <p class="text-sm font-bold truncate">Trader</p>
+                        <p class="text-xs text-slate-400 truncate">Pro Account</p>
+                    </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Trade Results Card -->
-        <div class="card">
-            <h2>📈 Recent Trades</h2>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header -->
+            <header class="h-20 flex items-center justify-between px-8 border-b border-border-muted bg-surface/50 backdrop-blur-md">
+                <div class="flex items-center gap-4">
+                    <div class="flex flex-col">
+                        <h2 class="text-xl font-bold">Pocket Option Terminal</h2>
+                        <div class="flex items-center gap-2">
+                            <span id="connectionStatus" class="flex size-2 rounded-full bg-slate-500"></span>
+                            <span id="connectionText" class="text-xs text-slate-500 font-semibold">CONNECTING...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-6">
+                    <div class="hidden md:flex bg-slate-800/50 border border-border-muted rounded-xl px-4 py-2 gap-4">
+                        <div class="flex flex-col border-r border-border-muted pr-4">
+                            <span class="text-[10px] text-slate-400 uppercase font-bold">Demo Balance</span>
+                            <span class="text-sm font-bold" id="demoBalance">$0.00</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-[10px] text-slate-400 uppercase font-bold">Real Balance</span>
+                            <span class="text-sm font-bold text-success" id="realBalance">$0.00</span>
+                        </div>
+                        <button onclick="refreshBalance()" class="ml-2 p-1 text-slate-400 hover:text-primary transition-colors" title="Refresh Balance">
+                            <span class="material-symbols-outlined text-sm">refresh</span>
+                        </button>
+                    </div>
+                    
+                    <div class="flex items-center gap-2">
+                        <button class="p-2 text-slate-400 hover:text-white transition-colors relative" onclick="showNotifications()">
+                            <span class="material-symbols-outlined">notifications</span>
+                            <span id="notificationBadge" class="hidden absolute top-2 right-2 size-2 bg-danger rounded-full border-2 border-background-dark"></span>
+                        </button>
+                        <button class="p-2 text-slate-400 hover:text-white transition-colors">
+                            <span class="material-symbols-outlined">wallet</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
             
-            <table class="trade-table">
-                <thead>
-                    <tr>
-                        <th>Time</th>
-                        <th>Asset</th>
-                        <th>Direction</th>
-                        <th>Amount</th>
-                        <th>Step</th>
-                        <th>Result</th>
-                    </tr>
-                </thead>
-                <tbody id="tradesTableBody">
-                    <tr>
-                        <td colspan="6" style="text-align: center; color: #a0aec0;">No trades yet</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+            <!-- Alert Container -->
+            <div id="alertContainer" class="fixed top-24 right-8 z-50 space-y-2 max-w-md"></div>
+
+            <!-- Dashboard Body -->
+            <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                <!-- Dashboard Section -->
+                <div id="dashboardSection" class="section-content">
+                    <!-- Stats Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="glass-card p-6 rounded-2xl relative overflow-hidden group">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <p class="text-slate-400 text-sm font-medium">Total Profit</p>
+                                    <h3 class="text-2xl font-bold mt-1" id="totalProfit">$0.00</h3>
+                                </div>
+                                <span class="material-symbols-outlined text-success bg-success/10 p-2 rounded-lg">trending_up</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs">
+                                <span class="text-success font-bold" id="profitChange">+0%</span>
+                                <span class="text-slate-500">vs last session</span>
+                            </div>
+                            <div class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-success/20 to-transparent"></div>
+                        </div>
+                        
+                        <div class="glass-card p-6 rounded-2xl relative overflow-hidden group">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <p class="text-slate-400 text-sm font-medium">Win Rate</p>
+                                    <h3 class="text-2xl font-bold mt-1" id="winRate">0%</h3>
+                                </div>
+                                <span class="material-symbols-outlined text-primary bg-primary/10 p-2 rounded-lg">speed</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs">
+                                <span class="text-primary font-bold" id="winRateChange">--</span>
+                                <span class="text-slate-500">Stability</span>
+                            </div>
+                            <div class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent"></div>
+                        </div>
+                        
+                        <div class="glass-card p-6 rounded-2xl relative overflow-hidden group">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <p class="text-slate-400 text-sm font-medium">Total Trades</p>
+                                    <h3 class="text-2xl font-bold mt-1" id="totalTrades">0</h3>
+                                </div>
+                                <span class="material-symbols-outlined text-slate-400 bg-slate-400/10 p-2 rounded-lg">sensors</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs">
+                                <span class="text-slate-400 font-bold" id="tradesStatus">Idle</span>
+                                <span class="text-slate-500">Status</span>
+                            </div>
+                            <div class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-slate-400/20 to-transparent"></div>
+                        </div>
+                        
+                        <div class="glass-card p-6 rounded-2xl relative overflow-hidden group">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <p class="text-slate-400 text-sm font-medium">Current Step</p>
+                                    <h3 class="text-2xl font-bold mt-1" id="currentStep">0</h3>
+                                </div>
+                                <span class="material-symbols-outlined text-danger bg-danger/10 p-2 rounded-lg">layers</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs">
+                                <span class="text-slate-400 font-bold" id="stepStatus">Ready</span>
+                                <span class="text-slate-500">Martingale</span>
+                            </div>
+                            <div class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-danger/20 to-transparent"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 xl:grid-cols-12 gap-8">
+                        <!-- Trading Console -->
+                        <div class="xl:col-span-8 flex flex-col gap-8">
+                            <div class="glass-card rounded-2xl p-8">
+                                <div class="flex items-center justify-between mb-8">
+                                    <h4 class="text-lg font-bold flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-primary">tune</span>
+                                        Bot Configuration
+                                    </h4>
+                                    <div class="flex gap-2">
+                                        <span id="accountTypeBadge" class="px-3 py-1 rounded-full bg-slate-800 text-xs font-bold border border-border-muted">DEMO</span>
+                                        <span id="botStatusBadge" class="px-3 py-1 rounded-full bg-slate-800 text-xs font-bold border border-border-muted">STOPPED</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                                    <div class="space-y-6">
+                                        <div class="space-y-2">
+                                            <div class="flex justify-between items-center">
+                                                <label class="text-sm font-bold text-slate-400 uppercase tracking-wider">Stake Amount</label>
+                                                <span class="text-primary font-bold" id="stakeDisplay">$1.00</span>
+                                            </div>
+                                            <input id="initialAmount" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary" max="1000" min="0.1" step="0.1" type="range" value="1.0" oninput="updateStakeDisplay()"/>
+                                            <div class="flex justify-between text-[10px] text-slate-500 font-bold">
+                                                <span>MIN $0.1</span>
+                                                <span>MAX $1,000</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="space-y-2">
+                                            <div class="flex justify-between items-center">
+                                                <label class="text-sm font-bold text-slate-400 uppercase tracking-wider">Martingale Mult.</label>
+                                                <span class="text-primary font-bold" id="multiplierDisplay">2.5x</span>
+                                            </div>
+                                            <input id="multiplier" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary" max="5" min="1.1" step="0.1" type="range" value="2.5" oninput="updateMultiplierDisplay()"/>
+                                            <div class="flex justify-between text-[10px] text-slate-500 font-bold">
+                                                <span>1.1x</span>
+                                                <span>5.0x</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div class="space-y-2">
+                                            <label class="text-sm font-bold text-slate-400 uppercase tracking-wider">Account Type</label>
+                                            <select id="accountType" class="w-full bg-slate-800 border-border-muted rounded-xl text-sm focus:ring-primary focus:border-primary transition-all" onchange="updateAccountBadge()">
+                                                <option value="true">Demo</option>
+                                                <option value="false">Real</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="space-y-2">
+                                            <label class="text-sm font-bold text-slate-400 uppercase tracking-wider">Starting Step</label>
+                                            <input id="martingaleStep" class="w-full bg-slate-800 border-border-muted rounded-xl text-sm" type="number" min="0" max="10" value="0" oninput="updateMartingalePreview()"/>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex gap-4">
+                                    <button onclick="startTrading()" class="flex-1 bg-success hover:bg-success/90 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-success/20">
+                                        <span class="material-symbols-outlined">play_arrow</span>
+                                        START BOT SESSION
+                                    </button>
+                                    <button onclick="stopTrading()" class="flex-1 bg-danger/10 border border-danger/30 hover:bg-danger/20 text-danger font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all">
+                                        <span class="material-symbols-outlined">stop</span>
+                                        EMERGENCY STOP
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Trade History Table -->
+                            <div class="glass-card rounded-2xl overflow-hidden">
+                                <div class="p-6 border-b border-border-muted flex justify-between items-center">
+                                    <h4 class="font-bold flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-primary">list_alt</span>
+                                        Recent Activity
+                                    </h4>
+                                    <button onclick="loadCsvFiles()" class="text-xs text-primary font-bold hover:underline">View All History</button>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left">
+                                        <thead class="bg-slate-800/50 text-[10px] uppercase font-bold text-slate-400">
+                                            <tr>
+                                                <th class="px-6 py-4">Asset</th>
+                                                <th class="px-6 py-4">Time</th>
+                                                <th class="px-6 py-4">Type</th>
+                                                <th class="px-6 py-4">Amount</th>
+                                                <th class="px-6 py-4">Step</th>
+                                                <th class="px-6 py-4">Status</th>
+                                                <th class="px-6 py-4 text-right">Profit</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tradesTableBody" class="divide-y divide-border-muted">
+                                            <tr>
+                                                <td colspan="7" class="px-6 py-8 text-center text-slate-500">
+                                                    <span class="material-symbols-outlined text-4xl mb-2 opacity-30">inbox</span>
+                                                    <p>No trades yet. Start the bot to begin trading.</p>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Sidebar Widgets -->
+                        <div class="xl:col-span-4 flex flex-col gap-8">
+                            <!-- Account Info -->
+                            <div class="glass-card rounded-2xl p-6">
+                                <h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Account Information</h4>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center p-3 bg-slate-800/50 rounded-lg">
+                                        <span class="text-sm text-slate-400">Account Type</span>
+                                        <span id="accountTypeDisplay" class="font-bold text-primary">DEMO</span>
+                                    </div>
+                                    <div class="flex justify-between items-center p-3 bg-slate-800/50 rounded-lg">
+                                        <span class="text-sm text-slate-400">Current Balance</span>
+                                        <span id="currentBalanceDisplay" class="font-bold text-success">$0.00</span>
+                                    </div>
+                                    <div class="flex justify-between items-center p-3 bg-slate-800/50 rounded-lg">
+                                        <span class="text-sm text-slate-400">Trade Amount</span>
+                                        <span id="currentAmountDisplay" class="font-bold">$1.00</span>
+                                    </div>
+                                    <div class="flex justify-between items-center p-3 bg-slate-800/50 rounded-lg">
+                                        <span class="text-sm text-slate-400">Multiplier</span>
+                                        <span id="currentMultiplierDisplay" class="font-bold">2.5x</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Martingale Sequence -->
+                            <div class="glass-card rounded-2xl p-6">
+                                <h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">Martingale Preview</h4>
+                                <div id="martingalePreview" class="space-y-4">
+                                    <!-- Will be populated by JavaScript -->
+                                </div>
+                            </div>
+                            
+                            <!-- Strategy Health -->
+                            <div class="glass-card rounded-2xl p-6">
+                                <h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">System Status</h4>
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between text-xs mb-1">
+                                        <span class="font-medium">Bot Connection</span>
+                                        <span id="botHealthStatus" class="text-slate-500">Idle</span>
+                                    </div>
+                                    <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                                        <div id="botHealthBar" class="h-full bg-slate-600 w-[0%] transition-all duration-500"></div>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between text-xs mb-1">
+                                        <span class="font-medium">Win Rate Score</span>
+                                        <span id="winRateScore" class="text-slate-500">--</span>
+                                    </div>
+                                    <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                                        <div id="winRateBar" class="h-full bg-primary w-[0%] transition-all duration-500"></div>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between text-xs mb-1">
+                                        <span class="font-medium">Upcoming Signals</span>
+                                        <span id="upcomingCount" class="text-primary font-bold">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuration Section -->
+                <div id="configSection" class="section-content hidden">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- SSID Configuration -->
+                        <div class="glass-card rounded-2xl p-8">
+                            <h4 class="text-lg font-bold flex items-center gap-2 mb-6">
+                                <span class="material-symbols-outlined text-primary">key</span>
+                                SSID Configuration
+                            </h4>
+                            
+                            <div id="ssidConfigured" class="hidden mb-6 p-4 bg-success/10 border border-success/30 rounded-xl">
+                                <div class="flex items-start gap-3">
+                                    <span class="material-symbols-outlined text-success">check_circle</span>
+                                    <div class="flex-1">
+                                        <p class="font-bold text-success mb-2">SSID Configured</p>
+                                        <p class="text-xs text-slate-400 font-mono" id="configuredSsid"></p>
+                                        <button onclick="showSsidForm()" class="mt-3 text-xs text-primary font-bold hover:underline">Update SSID</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="ssidForm">
+                                <div class="mb-4 p-4 bg-primary/10 border border-primary/30 rounded-xl">
+                                    <div class="flex items-start gap-3">
+                                        <span class="material-symbols-outlined text-primary">info</span>
+                                        <p class="text-xs text-slate-300">Get SSID from PocketOption WebSocket (F12 → Network → WS → Look for 42["auth"...])</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="space-y-2 mb-4">
+                                    <label class="text-sm font-bold text-slate-400 uppercase tracking-wider">SSID String</label>
+                                    <input id="ssid" type="text" placeholder='42["auth",{"session":"..."}]' class="w-full bg-slate-800 border-border-muted rounded-xl text-sm p-3"/>
+                                </div>
+                                
+                                <button onclick="saveSsid()" class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all">
+                                    <span class="material-symbols-outlined">save</span>
+                                    Save SSID
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Telegram Configuration -->
+                        <div class="glass-card rounded-2xl p-8">
+                            <h4 class="text-lg font-bold flex items-center gap-2 mb-6">
+                                <span class="material-symbols-outlined text-primary">send</span>
+                                Telegram Configuration
+                            </h4>
+                            
+                            <div id="telegramStatus" class="hidden mb-6 p-4 bg-success/10 border border-success/30 rounded-xl">
+                                <div class="flex items-start gap-3">
+                                    <span class="material-symbols-outlined text-success">check_circle</span>
+                                    <div class="flex-1">
+                                        <p class="font-bold text-success mb-2">Session Active</p>
+                                        <div class="text-xs text-slate-400 space-y-1">
+                                            <p>Phone: <span id="configuredPhone"></span></p>
+                                            <p>API ID: <span id="configuredApiId"></span></p>
+                                            <p>Channel: <span id="configuredChannel"></span></p>
+                                        </div>
+                                        <button onclick="testTelegramConnection()" class="mt-3 text-xs text-primary font-bold hover:underline">Test Connection</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="telegramOtpNeeded" class="hidden mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
+                                <div class="flex items-start gap-3">
+                                    <span class="material-symbols-outlined text-yellow-500">warning</span>
+                                    <div class="flex-1">
+                                        <p class="font-bold text-yellow-500 mb-2">Session Required</p>
+                                        <p class="text-xs text-slate-400 mb-3">Credentials configured but session not found.</p>
+                                        <button onclick="sendOtpCode()" class="text-xs bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2 rounded-lg">
+                                            Send OTP Code
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="telegramOtpForm" class="hidden mb-6 p-4 bg-primary/10 border border-primary/30 rounded-xl">
+                                <div class="flex items-start gap-3">
+                                    <span class="material-symbols-outlined text-primary">mail</span>
+                                    <div class="flex-1">
+                                        <p class="font-bold text-primary mb-2">OTP Code Sent!</p>
+                                        <p class="text-xs text-slate-400 mb-3">Check your Telegram app for the verification code.</p>
+                                        <input id="otpCode" type="text" placeholder="12345" maxlength="5" class="w-full bg-slate-800 border-border-muted rounded-xl text-sm p-3 mb-3"/>
+                                        <button onclick="verifyOtp()" class="text-xs bg-success hover:bg-success/90 text-white font-bold px-4 py-2 rounded-lg">
+                                            Verify OTP
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="telegramForm">
+                                <div class="mb-4 p-4 bg-primary/10 border border-primary/30 rounded-xl">
+                                    <div class="flex items-start gap-3">
+                                        <span class="material-symbols-outlined text-primary">info</span>
+                                        <p class="text-xs text-slate-300">Configure Telegram credentials in .env file</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="space-y-4">
+                                    <div class="space-y-2">
+                                        <label class="text-sm font-bold text-slate-400 uppercase tracking-wider">Phone Number</label>
+                                        <input id="phone" type="text" placeholder="+1234567890" class="w-full bg-slate-800 border-border-muted rounded-xl text-sm p-3"/>
+                                    </div>
+                                    
+                                    <div class="space-y-2">
+                                        <label class="text-sm font-bold text-slate-400 uppercase tracking-wider">API ID</label>
+                                        <input id="apiId" type="text" placeholder="12345678" class="w-full bg-slate-800 border-border-muted rounded-xl text-sm p-3"/>
+                                    </div>
+                                    
+                                    <div class="space-y-2">
+                                        <label class="text-sm font-bold text-slate-400 uppercase tracking-wider">API Hash</label>
+                                        <input id="apiHash" type="text" placeholder="abcdef1234567890" class="w-full bg-slate-800 border-border-muted rounded-xl text-sm p-3"/>
+                                    </div>
+                                    
+                                    <button onclick="saveTelegram()" class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all">
+                                        <span class="material-symbols-outlined">save</span>
+                                        Save Configuration
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Section -->
+                <div id="historySection" class="section-content hidden">
+                    <div class="glass-card rounded-2xl p-8">
+                        <div class="flex items-center justify-between mb-6">
+                            <h4 class="text-lg font-bold flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">folder_open</span>
+                                Trade History (CSV Files)
+                            </h4>
+                            <button onclick="loadCsvFiles()" class="bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all">
+                                <span class="material-symbols-outlined">refresh</span>
+                                Refresh Files
+                            </button>
+                        </div>
+                        
+                        <div id="csvFilesList" class="mb-8">
+                            <p class="text-center text-slate-500 py-8">Click refresh to load CSV files</p>
+                        </div>
+                        
+                        <div id="csvDataView" class="hidden">
+                            <div class="flex items-center justify-between mb-6 pb-4 border-b border-border-muted">
+                                <h5 class="font-bold flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary">description</span>
+                                    <span id="csvFileName"></span>
+                                </h5>
+                                <button onclick="downloadCsv()" class="text-xs bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-sm">download</span>
+                                    Download
+                                </button>
+                            </div>
+                            
+                            <!-- CSV Stats Grid -->
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+                                <div class="bg-slate-800/50 p-4 rounded-xl border border-border-muted">
+                                    <p class="text-xs text-slate-400 mb-1">Total Trades</p>
+                                    <p class="text-xl font-bold" id="csvTotalTrades">0</p>
+                                </div>
+                                <div class="bg-slate-800/50 p-4 rounded-xl border border-border-muted">
+                                    <p class="text-xs text-slate-400 mb-1">Wins</p>
+                                    <p class="text-xl font-bold text-success" id="csvWins">0</p>
+                                </div>
+                                <div class="bg-slate-800/50 p-4 rounded-xl border border-border-muted">
+                                    <p class="text-xs text-slate-400 mb-1">Losses</p>
+                                    <p class="text-xl font-bold text-danger" id="csvLosses">0</p>
+                                </div>
+                                <div class="bg-slate-800/50 p-4 rounded-xl border border-border-muted">
+                                    <p class="text-xs text-slate-400 mb-1">Win Rate</p>
+                                    <p class="text-xl font-bold text-primary" id="csvWinRate">0%</p>
+                                </div>
+                                <div class="bg-slate-800/50 p-4 rounded-xl border border-border-muted">
+                                    <p class="text-xs text-slate-400 mb-1">Total P/L</p>
+                                    <p class="text-xl font-bold" id="csvProfit">$0.00</p>
+                                </div>
+                            </div>
+                            
+                            <!-- CSV Table -->
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left">
+                                    <thead class="bg-slate-800/50 text-[10px] uppercase font-bold text-slate-400">
+                                        <tr>
+                                            <th class="px-6 py-4">Date</th>
+                                            <th class="px-6 py-4">Time</th>
+                                            <th class="px-6 py-4">Asset</th>
+                                            <th class="px-6 py-4">Direction</th>
+                                            <th class="px-6 py-4">Amount</th>
+                                            <th class="px-6 py-4">Step</th>
+                                            <th class="px-6 py-4">Duration</th>
+                                            <th class="px-6 py-4">Result</th>
+                                            <th class="px-6 py-4 text-right">P/L</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="csvTableBody" class="divide-y divide-border-muted">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Signals Section -->
+                <div id="signalsSection" class="section-content hidden">
+                    <div class="glass-card rounded-2xl p-8">
+                        <div class="flex items-center justify-between mb-6">
+                            <h4 class="text-lg font-bold flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">electric_bolt</span>
+                                Telegram Signals Monitor
+                            </h4>
+                            <button onclick="loadUpcomingTrades()" class="bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all">
+                                <span class="material-symbols-outlined">refresh</span>
+                                Refresh
+                            </button>
+                        </div>
+                        
+                        <div id="upcomingTradesContainer">
+                            <div class="text-center py-12 text-slate-500">
+                                <span class="material-symbols-outlined text-6xl mb-4 opacity-30">signal_cellular_alt</span>
+                                <p>Click refresh to load upcoming signals</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
-    
+
     <script>
         const API_BASE = 'http://localhost:5000/api';
+        let currentCsvFile = '';
         
+        // Section Navigation
+        function showSection(sectionName) {
+            const sections = ['dashboard', 'config', 'history', 'signals'];
+            sections.forEach(section => {
+                const element = document.getElementById(section + 'Section');
+                if (element) {
+                    element.classList.toggle('hidden', section !== sectionName);
+                }
+            });
+            
+            // Update nav active state
+            document.querySelectorAll('nav a').forEach(link => {
+                link.classList.remove('bg-primary/10', 'text-primary');
+                link.classList.add('text-slate-400');
+            });
+            event.target.closest('a').classList.add('bg-primary/10', 'text-primary');
+            event.target.closest('a').classList.remove('text-slate-400');
+        }
+        
+        // Alert System
         function showAlert(message, type = 'success') {
             const alertContainer = document.getElementById('alertContainer');
             const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type}`;
-            alertDiv.textContent = message;
+            
+            const bgColor = type === 'success' ? 'bg-success/10 border-success/30' : 'bg-danger/10 border-danger/30';
+            const textColor = type === 'success' ? 'text-success' : 'text-danger';
+            const icon = type === 'success' ? 'check_circle' : 'error';
+            
+            alertDiv.className = `glass-card p-4 rounded-xl border ${bgColor} flex items-center gap-3 animate-slide-in`;
+            alertDiv.innerHTML = `
+                <span class="material-symbols-outlined ${textColor}">${icon}</span>
+                <p class="text-sm text-slate-100">${message}</p>
+            `;
+            
             alertContainer.appendChild(alertDiv);
             
             setTimeout(() => {
-                alertDiv.remove();
+                alertDiv.style.opacity = '0';
+                alertDiv.style.transform = 'translateX(100%)';
+                setTimeout(() => alertDiv.remove(), 300);
             }, 5000);
+        }
+        
+        // Update Displays
+        function updateStakeDisplay() {
+            const value = document.getElementById('initialAmount').value;
+            document.getElementById('stakeDisplay').textContent = '$' + parseFloat(value).toFixed(2);
+            updateMartingalePreview();
+        }
+        
+        function updateMultiplierDisplay() {
+            const value = document.getElementById('multiplier').value;
+            document.getElementById('multiplierDisplay').textContent = parseFloat(value).toFixed(2) + 'x';
+            updateMartingalePreview();
+        }
+        
+        function updateAccountBadge() {
+            const isDemo = document.getElementById('accountType').value === 'true';
+            document.getElementById('accountTypeBadge').textContent = isDemo ? 'DEMO' : 'REAL';
+        }
+        
+        function updateMartingalePreview() {
+            const initialAmount = parseFloat(document.getElementById('initialAmount').value) || 1.0;
+            const multiplier = parseFloat(document.getElementById('multiplier').value) || 2.5;
+            const step = parseInt(document.getElementById('martingaleStep').value) || 0;
+            
+            const preview = document.getElementById('martingalePreview');
+            let html = '';
+            
+            // Show 6 steps
+            for (let i = 0; i < 6; i++) {
+                const currentStep = step + i;
+                const amount = initialAmount * Math.pow(multiplier, currentStep);
+                const isActive = i === 0;
+                
+                // Opacity decreases for later steps
+                let opacity = '';
+                if (i === 0) opacity = '';
+                else if (i === 1) opacity = '';
+                else if (i === 2) opacity = 'opacity-90';
+                else if (i === 3) opacity = 'opacity-70';
+                else if (i === 4) opacity = 'opacity-50';
+                else opacity = 'opacity-30';
+                
+                const bgColor = i === 0 ? 'bg-primary' : 'bg-slate-800';
+                const borderColor = i === 0 ? 'border-primary/30' : 'border-border-muted';
+                const textColor = i === 0 ? 'text-white' : 'text-slate-400';
+                const amountColor = i === 0 ? 'text-white' : 'text-slate-500';
+                
+                html += `
+                    <div class="flex items-center gap-4 relative ${opacity}">
+                        <div class="size-10 rounded-full ${bgColor} flex items-center justify-center text-xs font-bold border ${borderColor} z-10 ${isActive ? 'glow-primary' : ''}">
+                            ${currentStep + 1}
+                        </div>
+                        <div class="flex-1 flex justify-between items-center bg-slate-800/50 p-3 rounded-xl border ${borderColor}">
+                            <span class="text-sm ${textColor}">${isActive ? 'Current Step' : 'Step ' + (currentStep + 1)}</span>
+                            <span class="font-bold ${amountColor}">$${amount.toFixed(2)}</span>
+                        </div>
+                        ${i < 5 ? '<div class="absolute left-5 top-10 w-0.5 h-4 bg-slate-800"></div>' : ''}
+                    </div>
+                `;
+            }
+            
+            preview.innerHTML = html;
+        }
+
+        // Configuration Functions
+        async function loadConfig() {
+            try {
+                const response = await fetch(`${API_BASE}/config`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    if (data.ssid_configured && data.ssid_preview) {
+                        document.getElementById('ssidForm').classList.add('hidden');
+                        document.getElementById('ssidConfigured').classList.remove('hidden');
+                        document.getElementById('configuredSsid').textContent = data.ssid_preview;
+                    }
+                    
+                    const sessionResponse = await fetch(`${API_BASE}/telegram/check-session`);
+                    const sessionData = await sessionResponse.json();
+                    
+                    if (sessionData.session_exists) {
+                        document.getElementById('telegramForm').classList.add('hidden');
+                        document.getElementById('telegramOtpNeeded').classList.add('hidden');
+                        document.getElementById('telegramOtpForm').classList.add('hidden');
+                        document.getElementById('telegramStatus').classList.remove('hidden');
+                        
+                        document.getElementById('configuredPhone').textContent = data.telegram.phone || 'Not set';
+                        document.getElementById('configuredApiId').textContent = data.telegram.api_id || 'Not set';
+                        document.getElementById('configuredChannel').textContent = data.telegram.channel || 'testpob1234';
+                    } else if (sessionData.needs_otp) {
+                        document.getElementById('telegramForm').classList.add('hidden');
+                        document.getElementById('telegramStatus').classList.add('hidden');
+                        document.getElementById('telegramOtpForm').classList.add('hidden');
+                        document.getElementById('telegramOtpNeeded').classList.remove('hidden');
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading config:', error);
+            }
+        }
+        
+        function showSsidForm() {
+            document.getElementById('ssidConfigured').classList.add('hidden');
+            document.getElementById('ssidForm').classList.remove('hidden');
         }
         
         async function saveSsid() {
             const ssid = document.getElementById('ssid').value;
-            
             if (!ssid) {
                 showAlert('Please enter SSID', 'error');
                 return;
@@ -393,12 +775,80 @@
                     body: JSON.stringify({ ssid })
                 });
                 
+                if (response.ok) {
+                    showAlert('SSID saved successfully!', 'success');
+                    document.getElementById('ssid').value = '';
+                    setTimeout(() => loadConfig(), 1000);
+                } else {
+                    const data = await response.json();
+                    showAlert(data.error || 'Failed to save SSID', 'error');
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+            }
+        }
+        
+        async function sendOtpCode() {
+            try {
+                showAlert('Sending OTP code...', 'success');
+                
+                const response = await fetch(`${API_BASE}/telegram/send-code`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
                 const data = await response.json();
                 
                 if (response.ok) {
-                    showAlert('SSID saved successfully!', 'success');
+                    showAlert(`OTP code sent to ${data.phone}!`, 'success');
+                    document.getElementById('telegramOtpNeeded').classList.add('hidden');
+                    document.getElementById('telegramOtpForm').classList.remove('hidden');
                 } else {
-                    showAlert(data.error || 'Failed to save SSID', 'error');
+                    showAlert(data.error || 'Failed to send OTP', 'error');
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+            }
+        }
+        
+        async function verifyOtp() {
+            const code = document.getElementById('otpCode').value;
+            if (!code) {
+                showAlert('Please enter OTP code', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/telegram/verify-otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+                
+                if (response.ok) {
+                    showAlert('Telegram session created successfully!', 'success');
+                    document.getElementById('otpCode').value = '';
+                    setTimeout(() => loadConfig(), 1000);
+                } else {
+                    const data = await response.json();
+                    showAlert(data.error || 'OTP verification failed', 'error');
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+            }
+        }
+        
+        async function testTelegramConnection() {
+            try {
+                showAlert('Testing Telegram connection...', 'success');
+                
+                const response = await fetch(`${API_BASE}/test/telegram`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showAlert(`Connected to ${data.channel}! Found ${data.recent_messages.length} recent messages.`, 'success');
+                } else {
+                    showAlert(data.error || 'Connection test failed', 'error');
                 }
             } catch (error) {
                 showAlert('Error: ' + error.message, 'error');
@@ -422,37 +872,26 @@
                     body: JSON.stringify({ phone, api_id: apiId, api_hash: apiHash })
                 });
                 
-                const data = await response.json();
-                
                 if (response.ok) {
                     showAlert('Telegram config saved!', 'success');
                 } else {
+                    const data = await response.json();
                     showAlert(data.error || 'Failed to save config', 'error');
                 }
             } catch (error) {
                 showAlert('Error: ' + error.message, 'error');
             }
         }
-        
+
+        // Trading Functions
         async function startTrading() {
             const initialAmount = parseFloat(document.getElementById('initialAmount').value);
             const isDemo = document.getElementById('accountType').value === 'true';
             const multiplier = parseFloat(document.getElementById('multiplier').value);
             const martingaleStep = parseInt(document.getElementById('martingaleStep').value);
             
-            // Validate inputs
             if (initialAmount <= 0) {
                 showAlert('Initial amount must be greater than 0', 'error');
-                return;
-            }
-            
-            if (multiplier < 1.1) {
-                showAlert('Multiplier must be at least 1.1', 'error');
-                return;
-            }
-            
-            if (martingaleStep < 0 || martingaleStep > 10) {
-                showAlert('Martingale step must be between 0 and 10', 'error');
                 return;
             }
             
@@ -471,7 +910,9 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    showAlert(`Trading started! Current trade amount: $${data.config.current_trade_amount.toFixed(2)}`, 'success');
+                    showAlert(`Trading started! Current amount: $${data.config.current_trade_amount.toFixed(2)}`, 'success');
+                    document.getElementById('botStatusBadge').textContent = 'ACTIVE';
+                    document.getElementById('botStatusBadge').classList.add('bg-success/20', 'border-success/50', 'text-success');
                     updateStatus();
                 } else {
                     showAlert(data.error || 'Failed to start trading', 'error');
@@ -487,12 +928,13 @@
                     method: 'POST'
                 });
                 
-                const data = await response.json();
-                
                 if (response.ok) {
                     showAlert('Trading stopped!', 'success');
+                    document.getElementById('botStatusBadge').textContent = 'STOPPED';
+                    document.getElementById('botStatusBadge').classList.remove('bg-success/20', 'border-success/50', 'text-success');
                     updateStatus();
                 } else {
+                    const data = await response.json();
                     showAlert(data.error || 'Failed to stop trading', 'error');
                 }
             } catch (error) {
@@ -505,13 +947,30 @@
                 const response = await fetch(`${API_BASE}/trading/status`);
                 const data = await response.json();
                 
-                const statusBadge = document.getElementById('tradingStatus');
                 if (data.active) {
-                    statusBadge.textContent = 'Active';
-                    statusBadge.className = 'status-badge status-active';
+                    document.getElementById('connectionStatus').classList.remove('bg-slate-500');
+                    document.getElementById('connectionStatus').classList.add('bg-success', 'animate-pulse');
+                    document.getElementById('connectionText').textContent = 'LIVE MARKET CONNECTED';
+                    document.getElementById('connectionText').classList.remove('text-slate-500');
+                    document.getElementById('connectionText').classList.add('text-success');
+                    
+                    document.getElementById('botHealthStatus').textContent = 'Active';
+                    document.getElementById('botHealthStatus').classList.add('text-success');
+                    document.getElementById('botHealthBar').classList.remove('bg-slate-600');
+                    document.getElementById('botHealthBar').classList.add('bg-success');
+                    document.getElementById('botHealthBar').style.width = '100%';
                 } else {
-                    statusBadge.textContent = 'Inactive';
-                    statusBadge.className = 'status-badge status-inactive';
+                    document.getElementById('connectionStatus').classList.remove('bg-success', 'animate-pulse');
+                    document.getElementById('connectionStatus').classList.add('bg-slate-500');
+                    document.getElementById('connectionText').textContent = 'IDLE';
+                    document.getElementById('connectionText').classList.remove('text-success');
+                    document.getElementById('connectionText').classList.add('text-slate-500');
+                    
+                    document.getElementById('botHealthStatus').textContent = 'Idle';
+                    document.getElementById('botHealthStatus').classList.remove('text-success');
+                    document.getElementById('botHealthBar').classList.remove('bg-success');
+                    document.getElementById('botHealthBar').classList.add('bg-slate-600');
+                    document.getElementById('botHealthBar').style.width = '0%';
                 }
             } catch (error) {
                 console.error('Error updating status:', error);
@@ -524,16 +983,141 @@
                 const data = await response.json();
                 
                 document.getElementById('totalTrades').textContent = data.total_trades || 0;
-                document.getElementById('winCount').textContent = data.wins || 0;
-                document.getElementById('lossCount').textContent = data.losses || 0;
-                document.getElementById('winRate').textContent = (data.win_rate || 0) + '%';
                 document.getElementById('totalProfit').textContent = '$' + (data.total_profit || 0).toFixed(2);
+                document.getElementById('winRate').textContent = (data.win_rate || 0) + '%';
                 document.getElementById('currentStep').textContent = data.current_step || 0;
+                
+                // Color code profit
+                const profitValue = data.total_profit || 0;
+                const profitElement = document.getElementById('totalProfit');
+                if (profitValue > 0) {
+                    profitElement.style.color = '#10b981'; // success color
+                } else if (profitValue < 0) {
+                    profitElement.style.color = '#e11d48'; // danger color
+                } else {
+                    profitElement.style.color = ''; // default
+                }
+                
+                // Update profit change indicator
+                const profitChange = document.getElementById('profitChange');
+                if (profitValue > 0) {
+                    profitChange.textContent = '+' + ((profitValue / 100) * 100).toFixed(1) + '%';
+                    profitChange.classList.remove('text-danger');
+                    profitChange.classList.add('text-success');
+                } else if (profitValue < 0) {
+                    profitChange.textContent = ((profitValue / 100) * 100).toFixed(1) + '%';
+                    profitChange.classList.remove('text-success');
+                    profitChange.classList.add('text-danger');
+                }
+                
+                // Update win rate bar
+                const winRateValue = data.win_rate || 0;
+                document.getElementById('winRateScore').textContent = winRateValue + '%';
+                document.getElementById('winRateBar').style.width = winRateValue + '%';
+                
+                // Remove old classes
+                document.getElementById('winRateScore').classList.remove('text-success', 'text-primary', 'text-danger');
+                
+                if (winRateValue >= 70) {
+                    document.getElementById('winRateScore').classList.add('text-success');
+                } else if (winRateValue >= 50) {
+                    document.getElementById('winRateScore').classList.add('text-primary');
+                } else {
+                    document.getElementById('winRateScore').classList.add('text-danger');
+                }
+                
+                // Update status text
+                if (data.total_trades > 0) {
+                    document.getElementById('tradesStatus').textContent = 'Active';
+                    document.getElementById('stepStatus').textContent = 'Step ' + (data.current_step || 0);
+                }
             } catch (error) {
                 console.error('Error updating analysis:', error);
             }
         }
         
+        async function updateBalance() {
+            try {
+                const response = await fetch(`${API_BASE}/balance`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const demoBalance = data.demo_balance || 0;
+                    const realBalance = data.real_balance || 0;
+                    
+                    document.getElementById('demoBalance').textContent = '$' + demoBalance.toFixed(2);
+                    document.getElementById('realBalance').textContent = '$' + realBalance.toFixed(2);
+                    
+                    // Update current balance display in sidebar
+                    const currentBalance = demoBalance > 0 ? demoBalance : realBalance;
+                    document.getElementById('currentBalanceDisplay').textContent = '$' + currentBalance.toFixed(2);
+                    
+                    // Update account type display
+                    const accountType = document.getElementById('accountType').value === 'true' ? 'DEMO' : 'REAL';
+                    document.getElementById('accountTypeDisplay').textContent = accountType;
+                    
+                    // Update current amount and multiplier displays
+                    const initialAmount = parseFloat(document.getElementById('initialAmount').value) || 1.0;
+                    const multiplier = parseFloat(document.getElementById('multiplier').value) || 2.5;
+                    const step = parseInt(document.getElementById('martingaleStep').value) || 0;
+                    const currentAmount = initialAmount * Math.pow(multiplier, step);
+                    
+                    document.getElementById('currentAmountDisplay').textContent = '$' + currentAmount.toFixed(2);
+                    document.getElementById('currentMultiplierDisplay').textContent = multiplier.toFixed(2) + 'x';
+                    
+                    // Show cached indicator if present
+                    if (data.cached) {
+                        console.log('Using cached balance data');
+                    }
+                } else {
+                    // Handle error but don't show alert on auto-refresh
+                    console.error('Balance fetch error:', data.error);
+                }
+            } catch (error) {
+                console.error('Error updating balance:', error);
+            }
+        }
+        
+        async function refreshBalance() {
+            try {
+                showAlert('Fetching balance from PocketOption...', 'success');
+                
+                const response = await fetch(`${API_BASE}/balance`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const demoBalance = data.demo_balance || 0;
+                    const realBalance = data.real_balance || 0;
+                    
+                    document.getElementById('demoBalance').textContent = '$' + demoBalance.toFixed(2);
+                    document.getElementById('realBalance').textContent = '$' + realBalance.toFixed(2);
+                    
+                    // Update sidebar
+                    const currentBalance = demoBalance > 0 ? demoBalance : realBalance;
+                    document.getElementById('currentBalanceDisplay').textContent = '$' + currentBalance.toFixed(2);
+                    
+                    showAlert(`Balance updated! Demo: $${demoBalance.toFixed(2)}, Real: $${realBalance.toFixed(2)}`, 'success');
+                } else {
+                    showAlert(data.error || 'Failed to fetch balance', 'error');
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+            }
+        }
+        
+        async function updateUpcomingCount() {
+            try {
+                const response = await fetch(`${API_BASE}/trades/upcoming`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('upcomingCount').textContent = data.total || 0;
+                }
+            } catch (error) {
+                console.error('Error updating upcoming count:', error);
+            }
+        }
+
         async function updateTrades() {
             try {
                 const response = await fetch(`${API_BASE}/trades/results?limit=10`);
@@ -542,63 +1126,245 @@
                 const tbody = document.getElementById('tradesTableBody');
                 
                 if (data.trades && data.trades.length > 0) {
-                    tbody.innerHTML = data.trades.map(trade => `
-                        <tr>
-                            <td>${trade.time}</td>
-                            <td>${trade.asset}</td>
-                            <td>${trade.direction}</td>
-                            <td>$${trade.amount.toFixed(2)}</td>
-                            <td>${trade.step}</td>
-                            <td class="trade-result-${trade.result}">${trade.result.toUpperCase()}</td>
-                        </tr>
-                    `).join('');
+                    tbody.innerHTML = data.trades.map(trade => {
+                        const isWin = trade.result === 'win';
+                        const statusColor = isWin ? 'text-success' : 'text-danger';
+                        const statusBg = isWin ? 'bg-success/10' : 'bg-danger/10';
+                        const statusIcon = isWin ? 'check_circle' : 'cancel';
+                        const directionColor = trade.direction === 'call' ? 'text-success' : 'text-danger';
+                        const directionBg = trade.direction === 'call' ? 'bg-success/10' : 'bg-danger/10';
+                        
+                        return `
+                            <tr class="hover:bg-slate-800/40 transition-colors">
+                                <td class="px-6 py-4 font-bold text-sm">${trade.asset || 'N/A'}</td>
+                                <td class="px-6 py-4 text-xs text-slate-400">${trade.time}</td>
+                                <td class="px-6 py-4">
+                                    <span class="${directionColor} font-bold text-xs ${directionBg} px-2 py-0.5 rounded uppercase">
+                                        ${trade.direction}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-sm">$${trade.amount.toFixed(2)}</td>
+                                <td class="px-6 py-4 text-sm">${trade.step}</td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-xs ${statusColor}">${statusIcon}</span>
+                                        <span class="text-xs font-medium ${statusColor}">${trade.result.toUpperCase()}</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-right font-bold ${statusColor}">
+                                    ${isWin ? '+' : ''}$${(trade.amount * (isWin ? 0.92 : -1)).toFixed(2)}
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #a0aec0;">No trades yet</td></tr>';
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="px-6 py-8 text-center text-slate-500">
+                                <span class="material-symbols-outlined text-4xl mb-2 opacity-30">inbox</span>
+                                <p>No trades yet. Start the bot to begin trading.</p>
+                            </td>
+                        </tr>
+                    `;
                 }
             } catch (error) {
                 console.error('Error updating trades:', error);
             }
         }
         
-        // Auto-refresh every 2 seconds
+        // CSV Functions
+        async function loadCsvFiles() {
+            try {
+                const response = await fetch(`${API_BASE}/csv/list`);
+                const data = await response.json();
+                
+                const container = document.getElementById('csvFilesList');
+                
+                if (data.files && data.files.length > 0) {
+                    let html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+                    
+                    data.files.forEach(file => {
+                        const fileSize = (file.size / 1024).toFixed(2);
+                        const modifiedDate = new Date(file.modified).toLocaleString();
+                        
+                        html += `
+                            <div onclick="loadCsvData('${file.filename}')" class="glass-card p-6 rounded-xl cursor-pointer hover:border-primary/50 transition-all group">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex items-start gap-3">
+                                        <span class="material-symbols-outlined text-primary text-3xl">description</span>
+                                        <div>
+                                            <p class="font-bold text-slate-100 mb-1">${file.filename}</p>
+                                            <div class="text-xs text-slate-400 space-y-1">
+                                                <p>Date: ${file.date}</p>
+                                                <p>Size: ${fileSize} KB</p>
+                                                <p>Modified: ${modifiedDate}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="material-symbols-outlined text-slate-600 group-hover:text-primary transition-colors">chevron_right</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center py-12 text-slate-500">
+                            <span class="material-symbols-outlined text-6xl mb-4 opacity-30">folder_open</span>
+                            <p>No CSV files found. Start trading to generate data!</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading CSV files:', error);
+                showAlert('Error loading CSV files', 'error');
+            }
+        }
+        
+        async function loadCsvData(filename) {
+            try {
+                currentCsvFile = filename;
+                
+                const response = await fetch(`${API_BASE}/csv/read/${filename}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('csvFileName').textContent = filename;
+                    document.getElementById('csvTotalTrades').textContent = data.statistics.total_trades;
+                    document.getElementById('csvWins').textContent = data.statistics.wins;
+                    document.getElementById('csvLosses').textContent = data.statistics.losses;
+                    document.getElementById('csvWinRate').textContent = data.statistics.win_rate + '%';
+                    
+                    const profit = data.statistics.total_profit;
+                    const profitElement = document.getElementById('csvProfit');
+                    profitElement.textContent = '$' + profit.toFixed(2);
+                    profitElement.className = profit >= 0 ? 'text-xl font-bold text-success' : 'text-xl font-bold text-danger';
+                    
+                    const tbody = document.getElementById('csvTableBody');
+                    tbody.innerHTML = data.trades.map(trade => {
+                        const resultClass = trade.result === 'win' ? 'text-success' : 'text-danger';
+                        const plValue = parseFloat(trade.profit_loss || 0);
+                        const plColor = plValue >= 0 ? 'text-success' : 'text-danger';
+                        
+                        return `
+                            <tr class="hover:bg-slate-800/40 transition-colors">
+                                <td class="px-6 py-4 text-sm">${trade.date}</td>
+                                <td class="px-6 py-4 text-xs text-slate-400">${trade.time}</td>
+                                <td class="px-6 py-4 font-bold text-sm">${trade.asset}</td>
+                                <td class="px-6 py-4 text-sm uppercase">${trade.direction}</td>
+                                <td class="px-6 py-4 text-sm">$${parseFloat(trade.amount).toFixed(2)}</td>
+                                <td class="px-6 py-4 text-sm">${trade.step}</td>
+                                <td class="px-6 py-4 text-sm">${trade.duration} min</td>
+                                <td class="px-6 py-4 font-bold text-sm ${resultClass}">${trade.result.toUpperCase()}</td>
+                                <td class="px-6 py-4 text-right font-bold ${plColor}">$${plValue.toFixed(2)}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                    
+                    document.getElementById('csvDataView').classList.remove('hidden');
+                    document.getElementById('csvDataView').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    showAlert(data.error || 'Failed to load CSV data', 'error');
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+            }
+        }
+        
+        function downloadCsv() {
+            if (currentCsvFile) {
+                window.open(`${API_BASE}/csv/download/${currentCsvFile}`, '_blank');
+            }
+        }
+        
+        function showNotifications() {
+            showAlert('No new notifications', 'success');
+        }
+        
+        async function loadUpcomingTrades() {
+            try {
+                const response = await fetch(`${API_BASE}/trades/upcoming`);
+                const data = await response.json();
+                
+                const container = document.getElementById('upcomingTradesContainer');
+                
+                if (data.trades && data.trades.length > 0) {
+                    let html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+                    
+                    data.trades.forEach(trade => {
+                        const directionColor = trade.direction === 'call' ? 'text-success' : 'text-danger';
+                        const directionBg = trade.direction === 'call' ? 'bg-success/10' : 'bg-danger/10';
+                        const directionIcon = trade.direction === 'call' ? 'trending_up' : 'trending_down';
+                        const executionTime = new Date(trade.execution_time).toLocaleString();
+                        
+                        html += `
+                            <div class="glass-card p-6 rounded-xl border border-border-muted">
+                                <div class="flex items-start justify-between mb-4">
+                                    <div>
+                                        <p class="font-bold text-lg mb-1">${trade.asset}</p>
+                                        <p class="text-xs text-slate-400">Execute at: ${executionTime}</p>
+                                    </div>
+                                    <span class="material-symbols-outlined ${directionColor} text-3xl">${directionIcon}</span>
+                                </div>
+                                <div class="grid grid-cols-3 gap-4 text-center">
+                                    <div>
+                                        <p class="text-xs text-slate-400 mb-1">Direction</p>
+                                        <span class="${directionColor} font-bold text-sm ${directionBg} px-3 py-1 rounded uppercase">
+                                            ${trade.direction}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-slate-400 mb-1">Duration</p>
+                                        <p class="font-bold">${trade.duration} min</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-slate-400 mb-1">Amount</p>
+                                        <p class="font-bold text-primary">$${trade.amount.toFixed(2)}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center py-12 text-slate-500">
+                            <span class="material-symbols-outlined text-6xl mb-4 opacity-30">inbox</span>
+                            <p>No upcoming signals. Start the bot to receive signals from Telegram.</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading upcoming trades:', error);
+                showAlert('Error loading upcoming trades', 'error');
+            }
+        }
+        
+        // Auto-refresh every 2 seconds for status and trades
         setInterval(() => {
             updateStatus();
             updateAnalysis();
             updateTrades();
+            updateUpcomingCount();
         }, 2000);
         
-        // Update current trade amount when inputs change
-        function updateCurrentTradeAmount() {
-            const initialAmount = parseFloat(document.getElementById('initialAmount').value) || 1.0;
-            const multiplier = parseFloat(document.getElementById('multiplier').value) || 2.5;
-            const step = parseInt(document.getElementById('martingaleStep').value) || 0;
-            
-            const currentAmount = initialAmount * Math.pow(multiplier, step);
-            document.getElementById('currentTradeAmount').textContent = '$' + currentAmount.toFixed(2);
-            
-            // Update martingale preview
-            let previewHTML = '';
-            for (let i = 0; i < 5; i++) {
-                const previewStep = step + i;
-                const previewAmount = initialAmount * Math.pow(multiplier, previewStep);
-                const isCurrent = i === 0;
-                const style = isCurrent ? 'color: #667eea; font-weight: 600;' : '';
-                const arrow = isCurrent ? '→ ' : '  ';
-                previewHTML += `<div style="${style}">${arrow}Step ${previewStep}: $${previewAmount.toFixed(2)}</div>`;
-            }
-            document.getElementById('martingalePreview').innerHTML = previewHTML;
-        }
-        
-        // Add event listeners to update current trade amount
-        document.getElementById('initialAmount').addEventListener('input', updateCurrentTradeAmount);
-        document.getElementById('multiplier').addEventListener('input', updateCurrentTradeAmount);
-        document.getElementById('martingaleStep').addEventListener('input', updateCurrentTradeAmount);
+        // Auto-refresh balance every 10 seconds (less frequent to avoid API overload)
+        setInterval(() => {
+            updateBalance();
+        }, 10000);
         
         // Initial load
+        loadConfig();
         updateStatus();
         updateAnalysis();
         updateTrades();
-        updateCurrentTradeAmount();
+        updateMartingalePreview();
+        updateBalance();
+        updateUpcomingCount();
     </script>
 </body>
 </html>

@@ -3,6 +3,8 @@ import os
 import re
 import sys
 import time
+import csv
+from pathlib import Path
 from dotenv import load_dotenv
 from telethon.sync import TelegramClient
 from telethon.tl.functions.messages import GetHistoryRequest
@@ -24,13 +26,13 @@ API_ID = os.getenv('TELEGRAM_API_ID')
 API_HASH = os.getenv('TELEGRAM_API_HASH')
 PHONE_NUMBER = os.getenv('TELEGRAM_PHONE')
 
-# Channel username (without t.me/)
-CHANNEL_USERNAME = 'testpob1234'
+# Channel username (without t.me/) - configurable via environment
+CHANNEL_USERNAME = os.getenv('TELEGRAM_CHANNEL', 'testpob1234')
 
-# Trading configuration
-TRADE_AMOUNT = 1.0
-IS_DEMO = True
-MULTIPLIER = 2.5
+# Trading configuration - will be set by API or environment variables
+TRADE_AMOUNT = float(os.getenv('TRADE_AMOUNT', '1.0'))
+IS_DEMO = os.getenv('IS_DEMO', 'True').lower() == 'true'
+MULTIPLIER = float(os.getenv('MULTIPLIER', '2.5'))
 
 # Signal storage
 pending_signals = {}
@@ -48,6 +50,68 @@ past_trades = []  # List of completed trades
 
 # Track recent signals for display
 recent_signals = []  # List of recent signals received
+
+# CSV folder path
+CSV_FOLDER = 'trade_results'
+
+def ensure_csv_folder():
+    """Create CSV folder if it doesn't exist"""
+    Path(CSV_FOLDER).mkdir(exist_ok=True)
+
+def get_csv_filename():
+    """Get CSV filename for current date"""
+    today = datetime.now().strftime('%Y-%m-%d')
+    return os.path.join(CSV_FOLDER, f'trades_{today}.csv')
+
+def save_trade_to_csv(trade_data: Dict):
+    """Save trade result to CSV file"""
+    try:
+        ensure_csv_folder()
+        csv_file = get_csv_filename()
+        
+        # Check if file exists to determine if we need headers
+        file_exists = os.path.exists(csv_file)
+        
+        # CSV headers
+        headers = [
+            'timestamp', 'date', 'time', 'asset', 'direction', 
+            'amount', 'step', 'duration', 'result', 'profit_loss',
+            'balance_before', 'balance_after', 'multiplier'
+        ]
+        
+        with open(csv_file, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=headers)
+            
+            # Write headers if new file
+            if not file_exists:
+                writer.writeheader()
+            
+            # Write trade data
+            writer.writerow(trade_data)
+        
+        print(f"✅ Trade saved to CSV: {csv_file}")
+        
+    except Exception as e:
+        print(f"❌ Error saving to CSV: {e}")
+
+def update_trading_config(initial_amount=None, is_demo=None, multiplier=None, martingale_step=None):
+    """Update trading configuration dynamically"""
+    global TRADE_AMOUNT, IS_DEMO, MULTIPLIER, global_martingale_step
+    
+    if initial_amount is not None:
+        TRADE_AMOUNT = initial_amount
+    if is_demo is not None:
+        IS_DEMO = is_demo
+    if multiplier is not None:
+        MULTIPLIER = multiplier
+    if martingale_step is not None:
+        global_martingale_step = martingale_step
+    
+    print(f"✅ Trading config updated:")
+    print(f"   Initial Amount: ${TRADE_AMOUNT}")
+    print(f"   Account Type: {'DEMO' if IS_DEMO else 'REAL'}")
+    print(f"   Multiplier: {MULTIPLIER}x")
+    print(f"   Martingale Step: {global_martingale_step}")
 
 def log_to_file(message: str):
     """Helper function to log messages with UTF-8 encoding"""
@@ -491,6 +555,24 @@ async def execute_strategy_trade(client, asset_name: str, order_direction: Order
                     trade['result'] = result
                     break
             
+            # Save trade to CSV
+            csv_data = {
+                'timestamp': datetime.now().isoformat(),
+                'date': datetime.now().strftime('%Y-%m-%d'),
+                'time': timestamp,
+                'asset': asset_name,
+                'direction': signal['direction'],
+                'amount': current_amount,
+                'step': global_martingale_step,
+                'duration': signal['time_minutes'],
+                'result': result,
+                'profit_loss': profit if result == 'win' else -current_amount,
+                'balance_before': '',  # Can be filled if balance tracking is added
+                'balance_after': '',
+                'multiplier': MULTIPLIER
+            }
+            save_trade_to_csv(csv_data)
+            
             # Update GLOBAL martingale step based on result
             if result == 'win':
                 # WIN: Reset global step to 0 and clear ALL past trades
@@ -626,7 +708,7 @@ async def cleanup_shared_client():
     log_to_file("👋 Bot shutting down\n")
 
 def get_user_config():
-    """Get user configuration"""
+    """Get user configuration from environment variables"""
     global TRADE_AMOUNT, IS_DEMO, MULTIPLIER
     
     ssid = os.getenv('SSID')
@@ -649,9 +731,10 @@ def get_user_config():
         print("❌ TELEGRAM_PHONE not found")
         return False
     
-    TRADE_AMOUNT = 1.0
-    IS_DEMO = True
-    MULTIPLIER = 2.5
+    # Load configuration from environment variables
+    TRADE_AMOUNT = float(os.getenv('TRADE_AMOUNT', '1.0'))
+    IS_DEMO = os.getenv('IS_DEMO', 'True').lower() == 'true'
+    MULTIPLIER = float(os.getenv('MULTIPLIER', '2.5'))
     
     return True
 
@@ -675,4 +758,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-s
