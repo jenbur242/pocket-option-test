@@ -455,70 +455,117 @@
                                 Telegram Configuration
                             </h4>
                             
+                            <!-- Session Active Status -->
                             <div id="telegramStatus" class="hidden mb-6 p-4 bg-success/10 border border-success/30 rounded-xl">
                                 <div class="flex items-start gap-3">
                                     <span class="material-symbols-outlined text-success">check_circle</span>
                                     <div class="flex-1">
-                                        <p class="font-bold text-success mb-2">Session Active</p>
+                                        <p class="font-bold text-success mb-2">✅ Session Active</p>
                                         <div class="text-xs text-slate-400 space-y-1">
-                                            <p>Phone: <span id="configuredPhone"></span></p>
-                                            <p>API ID: <span id="configuredApiId"></span></p>
-                                            <p>Channel: <span id="configuredChannel"></span></p>
+                                            <p>📱 Phone: <span id="configuredPhone" class="text-slate-200"></span></p>
+                                            <p>🔑 API ID: <span id="configuredApiId" class="text-slate-200"></span></p>
+                                            <p>📢 Channel: <span id="configuredChannel" class="text-slate-200"></span></p>
                                         </div>
-                                        <button onclick="testTelegramConnection()" class="mt-3 text-xs text-primary font-bold hover:underline">Test Connection</button>
+                                        <button onclick="testTelegramConnection()" class="mt-3 text-xs bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2 rounded-lg transition-all">
+                                            <span class="material-symbols-outlined text-xs mr-1">search</span>
+                                            Test Connection
+                                        </button>
                                     </div>
                                 </div>
                             </div>
                             
+                            <!-- OTP Needed Status -->
                             <div id="telegramOtpNeeded" class="hidden mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
                                 <div class="flex items-start gap-3">
                                     <span class="material-symbols-outlined text-yellow-500">warning</span>
                                     <div class="flex-1">
-                                        <p class="font-bold text-yellow-500 mb-2">Session Required</p>
-                                        <p class="text-xs text-slate-400 mb-3">Credentials configured but session not found.</p>
-                                        <button onclick="sendOtpCode()" class="text-xs bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2 rounded-lg">
+                                        <p class="font-bold text-yellow-500 mb-2">⚠️ Session Required</p>
+                                        <p class="text-xs text-slate-400 mb-3">Credentials configured but session not found. Click below to receive OTP code.</p>
+                                        <button onclick="sendOtpCode()" class="text-xs bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2 rounded-lg transition-all flex items-center gap-2">
+                                            <span class="material-symbols-outlined text-sm">mobile_friendly</span>
                                             Send OTP Code
                                         </button>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div id="telegramOtpForm" class="hidden mb-6 p-4 bg-primary/10 border border-primary/30 rounded-xl">
-                                <div class="flex items-start gap-3">
-                                    <span class="material-symbols-outlined text-primary">mail</span>
-                                    <div class="flex-1">
-                                        <p class="font-bold text-primary mb-2">OTP Code Sent!</p>
-                                        <p class="text-xs text-slate-400 mb-3">Check your Telegram app for the verification code.</p>
-                                        <input id="otpCode" type="text" placeholder="12345" maxlength="5" class="w-full bg-slate-800 border-border-muted rounded-xl text-sm p-3 mb-3"/>
-                                        <button onclick="verifyOtp()" class="text-xs bg-success hover:bg-success/90 text-white font-bold px-4 py-2 rounded-lg">
-                                            Verify OTP
-                                        </button>
+                            <!-- OTP Input Form -->
+                            <div id="telegramOtpForm" class="hidden mb-6">
+                                <div class="p-4 bg-primary/10 border border-primary/30 rounded-xl">
+                                    <div class="flex items-start gap-3 mb-4">
+                                        <span class="material-symbols-outlined text-primary text-2xl">mail</span>
+                                        <div class="flex-1">
+                                            <p class="font-bold text-primary mb-1">📨 OTP Code Sent!</p>
+                                            <p class="text-xs text-slate-400">Check your Telegram app for the verification code.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="space-y-3">
+                                        <div>
+                                            <label class="text-sm font-bold text-slate-300 block mb-2">
+                                                <span class="material-symbols-outlined text-xs mr-1">lock</span>
+                                                Enter OTP Code
+                                            </label>
+                                            <input 
+                                                id="otpCode" 
+                                                type="text" 
+                                                placeholder="12345" 
+                                                maxlength="5" 
+                                                class="w-full bg-slate-800 border-2 border-border-muted rounded-xl text-lg font-bold text-center p-4 focus:ring-2 focus:ring-primary focus:border-primary transition-all tracking-widest"
+                                                onkeypress="if(event.key === 'Enter') verifyOtp()"
+                                            />
+                                            <p class="text-xs text-slate-500 mt-2">Press Enter or click Verify after entering the code</p>
+                                        </div>
+                                        
+                                        <div class="flex gap-2">
+                                            <button onclick="verifyOtp()" class="flex-1 bg-success hover:bg-success/90 text-white font-bold px-4 py-3 rounded-xl transition-all flex items-center justify-center gap-2">
+                                                <span class="material-symbols-outlined">check_circle</span>
+                                                Verify OTP
+                                            </button>
+                                            <button onclick="cancelOtp()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-4 py-3 rounded-xl transition-all">
+                                                <span class="material-symbols-outlined">close</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                             
+                            <!-- Initial Configuration Form -->
                             <div id="telegramForm">
                                 <div class="mb-4 p-4 bg-primary/10 border border-primary/30 rounded-xl">
                                     <div class="flex items-start gap-3">
                                         <span class="material-symbols-outlined text-primary">info</span>
-                                        <p class="text-xs text-slate-300">Configure Telegram credentials in .env file</p>
+                                        <div>
+                                            <p class="text-sm text-slate-300 mb-2">Configure Telegram credentials to receive trading signals.</p>
+                                            <p class="text-xs text-slate-400">Get API credentials from: <a href="https://my.telegram.org/apps" target="_blank" class="text-primary hover:underline">my.telegram.org/apps</a></p>
+                                        </div>
                                     </div>
                                 </div>
                                 
                                 <div class="space-y-4">
                                     <div class="space-y-2">
-                                        <label class="text-sm font-bold text-slate-400 uppercase tracking-wider">Phone Number</label>
-                                        <input id="phone" type="text" placeholder="+1234567890" class="w-full bg-slate-800 border-border-muted rounded-xl text-sm p-3"/>
+                                        <label class="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                            <span class="material-symbols-outlined text-xs">phone</span>
+                                            Phone Number
+                                        </label>
+                                        <input id="phone" type="text" placeholder="+1234567890" class="w-full bg-slate-800 border-border-muted rounded-xl text-sm p-3 focus:ring-2 focus:ring-primary focus:border-primary transition-all"/>
+                                        <p class="text-xs text-slate-500">Include country code (e.g., +1 for US)</p>
                                     </div>
                                     
                                     <div class="space-y-2">
-                                        <label class="text-sm font-bold text-slate-400 uppercase tracking-wider">API ID</label>
-                                        <input id="apiId" type="text" placeholder="12345678" class="w-full bg-slate-800 border-border-muted rounded-xl text-sm p-3"/>
+                                        <label class="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                            <span class="material-symbols-outlined text-xs">key</span>
+                                            Telegram API ID
+                                        </label>
+                                        <input id="apiId" type="text" placeholder="12345678" class="w-full bg-slate-800 border-border-muted rounded-xl text-sm p-3 focus:ring-2 focus:ring-primary focus:border-primary transition-all"/>
                                     </div>
                                     
                                     <div class="space-y-2">
-                                        <label class="text-sm font-bold text-slate-400 uppercase tracking-wider">API Hash</label>
-                                        <input id="apiHash" type="text" placeholder="abcdef1234567890" class="w-full bg-slate-800 border-border-muted rounded-xl text-sm p-3"/>
+                                        <label class="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                            <span class="material-symbols-outlined text-xs">tag</span>
+                                            Telegram API Hash
+                                        </label>
+                                        <input id="apiHash" type="password" placeholder="abcdef1234567890" class="w-full bg-slate-800 border-border-muted rounded-xl text-sm p-3 focus:ring-2 focus:ring-primary focus:border-primary transition-all"/>
                                     </div>
                                     
                                     <button onclick="saveTelegram()" class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all">
@@ -874,7 +921,14 @@
                 return;
             }
             
+            if (code.length < 5) {
+                showAlert('OTP code must be 5 digits', 'error');
+                return;
+            }
+            
             try {
+                showAlert('Verifying OTP...', 'success');
+                
                 const response = await fetch(`${API_BASE}/telegram/verify-otp`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -882,8 +936,9 @@
                 });
                 
                 if (response.ok) {
-                    showAlert('Telegram session created successfully!', 'success');
+                    showAlert('✅ Telegram session created successfully!', 'success');
                     document.getElementById('otpCode').value = '';
+                    document.getElementById('telegramOtpForm').classList.add('hidden');
                     setTimeout(() => loadConfig(), 1000);
                 } else {
                     const data = await response.json();
@@ -892,6 +947,12 @@
             } catch (error) {
                 showAlert('Error: ' + error.message, 'error');
             }
+        }
+        
+        function cancelOtp() {
+            document.getElementById('otpCode').value = '';
+            document.getElementById('telegramOtpForm').classList.add('hidden');
+            document.getElementById('telegramOtpNeeded').classList.remove('hidden');
         }
         
         async function testTelegramConnection() {
