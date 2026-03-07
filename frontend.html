@@ -332,13 +332,39 @@
                                         <span class="text-sm text-slate-400">Current Balance</span>
                                         <span id="currentBalanceDisplay" class="font-bold text-success">$0.00</span>
                                     </div>
-                                    <div class="flex justify-between items-center p-3 bg-slate-800/50 rounded-lg">
-                                        <span class="text-sm text-slate-400">Trade Amount</span>
-                                        <span id="currentAmountDisplay" class="font-bold">$1.00</span>
+                                    
+                                    <!-- Editable Trade Amount -->
+                                    <div class="p-3 bg-slate-800/50 rounded-lg">
+                                        <label class="text-sm text-slate-400 block mb-2">Trade Amount</label>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-slate-400">$</span>
+                                            <input 
+                                                type="number" 
+                                                id="quickTradeAmount" 
+                                                class="flex-1 bg-slate-900 border border-border-muted rounded-lg px-3 py-2 text-white font-bold focus:ring-2 focus:ring-primary focus:border-primary transition-all" 
+                                                value="1.00" 
+                                                step="0.1" 
+                                                min="0.1"
+                                                oninput="syncTradeAmount()"
+                                            />
+                                        </div>
                                     </div>
-                                    <div class="flex justify-between items-center p-3 bg-slate-800/50 rounded-lg">
-                                        <span class="text-sm text-slate-400">Multiplier</span>
-                                        <span id="currentMultiplierDisplay" class="font-bold">2.5x</span>
+                                    
+                                    <!-- Editable Multiplier -->
+                                    <div class="p-3 bg-slate-800/50 rounded-lg">
+                                        <label class="text-sm text-slate-400 block mb-2">Multiplier</label>
+                                        <div class="flex items-center gap-2">
+                                            <input 
+                                                type="number" 
+                                                id="quickMultiplier" 
+                                                class="flex-1 bg-slate-900 border border-border-muted rounded-lg px-3 py-2 text-white font-bold focus:ring-2 focus:ring-primary focus:border-primary transition-all" 
+                                                value="2.5" 
+                                                step="0.1" 
+                                                min="1.1"
+                                                oninput="syncMultiplier()"
+                                            />
+                                            <span class="text-slate-400">x</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -660,12 +686,42 @@
         function updateStakeDisplay() {
             const value = document.getElementById('initialAmount').value;
             document.getElementById('stakeDisplay').textContent = '$' + parseFloat(value).toFixed(2);
+            
+            // Sync with quick input
+            document.getElementById('quickTradeAmount').value = parseFloat(value).toFixed(2);
+            
             updateMartingalePreview();
         }
         
         function updateMultiplierDisplay() {
             const value = document.getElementById('multiplier').value;
             document.getElementById('multiplierDisplay').textContent = parseFloat(value).toFixed(2) + 'x';
+            
+            // Sync with quick input
+            document.getElementById('quickMultiplier').value = parseFloat(value).toFixed(2);
+            
+            updateMartingalePreview();
+        }
+        
+        function syncTradeAmount() {
+            const value = document.getElementById('quickTradeAmount').value;
+            const parsedValue = parseFloat(value) || 0.1;
+            
+            // Update main slider
+            document.getElementById('initialAmount').value = parsedValue;
+            document.getElementById('stakeDisplay').textContent = '$' + parsedValue.toFixed(2);
+            
+            updateMartingalePreview();
+        }
+        
+        function syncMultiplier() {
+            const value = document.getElementById('quickMultiplier').value;
+            const parsedValue = parseFloat(value) || 1.1;
+            
+            // Update main slider
+            document.getElementById('multiplier').value = parsedValue;
+            document.getElementById('multiplierDisplay').textContent = parsedValue.toFixed(2) + 'x';
+            
             updateMartingalePreview();
         }
         
@@ -1056,15 +1112,6 @@
                     const accountType = document.getElementById('accountType').value === 'true' ? 'DEMO' : 'REAL';
                     document.getElementById('accountTypeDisplay').textContent = accountType;
                     
-                    // Update current amount and multiplier displays
-                    const initialAmount = parseFloat(document.getElementById('initialAmount').value) || 1.0;
-                    const multiplier = parseFloat(document.getElementById('multiplier').value) || 2.5;
-                    const step = parseInt(document.getElementById('martingaleStep').value) || 0;
-                    const currentAmount = initialAmount * Math.pow(multiplier, step);
-                    
-                    document.getElementById('currentAmountDisplay').textContent = '$' + currentAmount.toFixed(2);
-                    document.getElementById('currentMultiplierDisplay').textContent = multiplier.toFixed(2) + 'x';
-                    
                     // Show cached indicator if present
                     if (data.cached) {
                         console.log('Using cached balance data');
@@ -1365,6 +1412,10 @@
         updateMartingalePreview();
         updateBalance();
         updateUpcomingCount();
+        
+        // Initialize quick inputs with slider values
+        document.getElementById('quickTradeAmount').value = document.getElementById('initialAmount').value;
+        document.getElementById('quickMultiplier').value = document.getElementById('multiplier').value;
     </script>
 </body>
 </html>
