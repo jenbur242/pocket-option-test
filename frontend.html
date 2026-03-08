@@ -1242,19 +1242,48 @@
 
         // Configuration Functions
         async function loadConfig() {
+            // Hardcoded fallback configuration from .env
+            const FALLBACK_CONFIG = {
+                ssid_demo: '42["auth",{"session":"8kmju1f41cibg1vg5pihe37d7u","isDemo":1,"uid":116040367,"platform":2,"isFastHistory":true,"isOptimized":true}]',
+                ssid_real: '42["auth",{"session":"a:4:{s:10:\\"session_id\\";s:32:\\"2a8f01f1efeca20cc174c1b75eb6156a\\";s:10:\\"ip_address\\";s:14:\\"172.86.107.247\\";s:10:\\"user_agent\\";s:111:\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36\\";s:13:\\"last_activity\\";i:1772807404;}3fed45de8f1ed072a8cabf7a07571f05","isDemo":0,"uid":116040367,"platform":2,"isFastHistory":true,"isOptimized":true}]',
+                telegram_api_id: '28375707',
+                telegram_api_hash: 'cf54e727df04363575f8ee9f120be2c9',
+                telegram_phone: '+12427272924',
+                telegram_channel: 'testpob1234'
+            };
+            
             try {
                 const response = await fetch(`${API_BASE}/config`);
                 const data = await response.json();
                 
-                if (response.ok) {
+                let configData = data;
+                
+                // If API fails or returns empty, use hardcoded fallback
+                if (!response.ok || !data.telegram) {
+                    addLog('⚠️ Using hardcoded configuration from .env', 'warning');
+                    configData = {
+                        ssid_demo_configured: true,
+                        ssid_real_configured: true,
+                        ssid_demo_preview: FALLBACK_CONFIG.ssid_demo.substring(0, 20) + '...' + FALLBACK_CONFIG.ssid_demo.slice(-10),
+                        ssid_real_preview: FALLBACK_CONFIG.ssid_real.substring(0, 20) + '...' + FALLBACK_CONFIG.ssid_real.slice(-10),
+                        telegram: {
+                            api_id: FALLBACK_CONFIG.telegram_api_id,
+                            api_hash: '***' + FALLBACK_CONFIG.telegram_api_hash.slice(-4),
+                            phone: FALLBACK_CONFIG.telegram_phone,
+                            channel: FALLBACK_CONFIG.telegram_channel
+                        }
+                    };
+                }
+                
+                if (configData) {
                     // Update configuration overview panel
-                    document.getElementById('envSsidDemo').textContent = data.ssid_demo_preview || '❌ Not configured';
-                    document.getElementById('envSsidReal').textContent = data.ssid_real_preview || '❌ Not configured';
+                    document.getElementById('envSsidDemo').textContent = configData.ssid_demo_preview || FALLBACK_CONFIG.ssid_demo.substring(0, 20) + '...';
+                    document.getElementById('envSsidReal').textContent = configData.ssid_real_preview || FALLBACK_CONFIG.ssid_real.substring(0, 20) + '...';
                     
-                    document.getElementById('envTelegramApiId').textContent = data.telegram.api_id || '❌ Not configured';
-                    document.getElementById('envTelegramApiHash').textContent = data.telegram.api_hash || '❌ Not configured';
-                    document.getElementById('envTelegramPhone').textContent = data.telegram.phone || '❌ Not configured';
-                    document.getElementById('envTelegramChannel').textContent = data.telegram.channel || 'testpob1234';
+                    document.getElementById('envTelegramApiId').textContent = configData.telegram?.api_id || FALLBACK_CONFIG.telegram_api_id;
+                    document.getElementById('envTelegramApiHash').textContent = configData.telegram?.api_hash || ('***' + FALLBACK_CONFIG.telegram_api_hash.slice(-4));
+                    document.getElementById('envTelegramPhone').textContent = configData.telegram?.phone || FALLBACK_CONFIG.telegram_phone;
+                    document.getElementById('envTelegramChannel').textContent = configData.telegram?.channel || FALLBACK_CONFIG.telegram_channel;
                     
                     // Get trading config from form (since it's not in API response)
                     document.getElementById('envTradeAmount').textContent = '$' + document.getElementById('initialAmount').value;
@@ -1263,7 +1292,7 @@
                     document.getElementById('envMartingaleStep').textContent = document.getElementById('martingaleStep').value;
                     
                     // Auto-load SSIDs if configured
-                    if (data.ssid_demo_configured || data.ssid_real_configured) {
+                    if (configData.ssid_demo_configured || configData.ssid_real_configured) {
                         document.getElementById('ssidForm').classList.add('hidden');
                         document.getElementById('ssidConfigured').classList.remove('hidden');
                         
@@ -1271,8 +1300,8 @@
                         const demoDisplay = document.getElementById('configuredSsidDemo');
                         const realDisplay = document.getElementById('configuredSsidReal');
                         
-                        if (data.ssid_demo_configured && data.ssid_demo_preview) {
-                            demoDisplay.textContent = data.ssid_demo_preview;
+                        if (configData.ssid_demo_configured && configData.ssid_demo_preview) {
+                            demoDisplay.textContent = configData.ssid_demo_preview;
                             demoDisplay.classList.remove('text-slate-500');
                             demoDisplay.classList.add('text-slate-300');
                             addLog('🔑 Demo SSID loaded from .env', 'success');
@@ -1281,8 +1310,8 @@
                             demoDisplay.classList.add('text-slate-500');
                         }
                         
-                        if (data.ssid_real_configured && data.ssid_real_preview) {
-                            realDisplay.textContent = data.ssid_real_preview;
+                        if (configData.ssid_real_configured && configData.ssid_real_preview) {
+                            realDisplay.textContent = configData.ssid_real_preview;
                             realDisplay.classList.remove('text-slate-500');
                             realDisplay.classList.add('text-slate-300');
                             addLog('🔑 Real SSID loaded from .env', 'success');
@@ -1304,16 +1333,22 @@
                     const sessionResponse = await fetch(`${API_BASE}/telegram/check-session`);
                     const sessionData = await sessionResponse.json();
                     
-                    // Pre-fill Telegram form fields from .env
-                    if (data.telegram.phone) {
-                        document.getElementById('phone').value = data.telegram.phone;
+                    // Pre-fill Telegram form fields from .env or fallback
+                    const telegramPhone = configData.telegram?.phone || FALLBACK_CONFIG.telegram_phone;
+                    const telegramApiId = configData.telegram?.api_id || FALLBACK_CONFIG.telegram_api_id;
+                    const telegramApiHash = FALLBACK_CONFIG.telegram_api_hash; // Use full hash for form
+                    
+                    if (telegramPhone) {
+                        document.getElementById('phone').value = telegramPhone;
                     }
-                    if (data.telegram.api_id) {
-                        document.getElementById('apiId').value = data.telegram.api_id;
+                    if (telegramApiId) {
+                        document.getElementById('apiId').value = telegramApiId;
                     }
-                    // Don't pre-fill API hash for security, but show it's configured
-                    if (data.telegram.api_hash && data.telegram.api_hash !== 'Not configured') {
-                        document.getElementById('apiHash').placeholder = '••••••••' + data.telegram.api_hash.slice(-4);
+                    // Pre-fill API hash if using fallback
+                    if (!response.ok && telegramApiHash) {
+                        document.getElementById('apiHash').value = telegramApiHash;
+                    } else if (configData.telegram?.api_hash && configData.telegram.api_hash !== 'Not configured') {
+                        document.getElementById('apiHash').placeholder = '••••••••' + configData.telegram.api_hash.slice(-4);
                     }
                     
                     if (sessionData.session_exists) {
@@ -1322,9 +1357,9 @@
                         document.getElementById('telegramOtpForm').classList.add('hidden');
                         document.getElementById('telegramStatus').classList.remove('hidden');
                         
-                        document.getElementById('configuredPhone').textContent = data.telegram.phone || 'Not set';
-                        document.getElementById('configuredApiId').textContent = data.telegram.api_id || 'Not set';
-                        document.getElementById('configuredChannel').textContent = data.telegram.channel || 'testpob1234';
+                        document.getElementById('configuredPhone').textContent = telegramPhone || 'Not set';
+                        document.getElementById('configuredApiId').textContent = telegramApiId || 'Not set';
+                        document.getElementById('configuredChannel').textContent = configData.telegram?.channel || FALLBACK_CONFIG.telegram_channel;
                     } else if (sessionData.needs_otp) {
                         document.getElementById('telegramForm').classList.add('hidden');
                         document.getElementById('telegramStatus').classList.add('hidden');
@@ -1340,6 +1375,20 @@
                 }
             } catch (error) {
                 console.error('Error loading config:', error);
+                addLog('⚠️ Failed to load config from API, using hardcoded values', 'warning');
+                
+                // Use hardcoded fallback on error
+                document.getElementById('envSsidDemo').textContent = FALLBACK_CONFIG.ssid_demo.substring(0, 20) + '...';
+                document.getElementById('envSsidReal').textContent = FALLBACK_CONFIG.ssid_real.substring(0, 20) + '...';
+                document.getElementById('envTelegramApiId').textContent = FALLBACK_CONFIG.telegram_api_id;
+                document.getElementById('envTelegramApiHash').textContent = '***' + FALLBACK_CONFIG.telegram_api_hash.slice(-4);
+                document.getElementById('envTelegramPhone').textContent = FALLBACK_CONFIG.telegram_phone;
+                document.getElementById('envTelegramChannel').textContent = FALLBACK_CONFIG.telegram_channel;
+                
+                // Pre-fill form fields
+                document.getElementById('phone').value = FALLBACK_CONFIG.telegram_phone;
+                document.getElementById('apiId').value = FALLBACK_CONFIG.telegram_api_id;
+                document.getElementById('apiHash').value = FALLBACK_CONFIG.telegram_api_hash;
             }
         }
         
