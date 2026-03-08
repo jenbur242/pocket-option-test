@@ -175,6 +175,8 @@ def display_upcoming_trades_loop():
                                 result = "✅ Win"
                             elif past_trade['result'] == 'loss':
                                 result = "❌ Loss"
+                            elif past_trade['result'] == 'draw':
+                                result = "🔄 Draw"
                             elif past_trade['result'] == 'failed':
                                 result = "⚠️ Failed"
                             elif past_trade['result'] == 'pending':
@@ -384,33 +386,21 @@ def validate_ssid(ssid: str) -> bool:
     return True
 
 async def check_result_from_client(order_id: str, wait_seconds: int):
-    """Simple result checker - wait then check client._order_results"""
+    """Check result using check_win method - simplified and reliable"""
     global past_trades, global_martingale_step
     
     try:
-        # Wait for trade to complete
-        log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⏳ Waiting {wait_seconds}s for trade {order_id} to complete...\n")
-        await asyncio.sleep(wait_seconds)
-        
-        log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔍 Checking result for {order_id}...\n")
-        
         # Get client
         client = await get_persistent_client()
         
-        # Simple check: is result in client._order_results?
-        if order_id in client._order_results:
-            order_result = client._order_results[order_id]
-            profit = order_result.profit if order_result.profit is not None else 0
-            
-            # Map status
-            if order_result.status == OrderStatus.WIN:
-                result = 'win'
-            elif order_result.status == OrderStatus.LOSE:
-                result = 'loss'
-            elif order_result.status == OrderStatus.CLOSED or order_result.status == OrderStatus.CANCELLED:
-                result = 'closed'
-            else:
-                result = 'pending'
+        # Use check_win to wait for result (handles all the complexity internally)
+        log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⏳ Waiting for trade {order_id} result...\n")
+        
+        result_data = await client.check_win(order_id, max_wait_time=wait_seconds)
+        
+        if result_data and result_data.get('completed'):
+            result = result_data.get('result', 'unknown')
+            profit = result_data.get('profit', 0)
             
             log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ Result: {result.upper()} | Profit: ${profit:.2f}\n")
             
@@ -441,10 +431,12 @@ async def check_result_from_client(order_id: str, wait_seconds: int):
             # Update martingale step
             if result == 'win':
                 global_martingale_step = 0
-                # Remove completed trades, keep only pending
                 past_trades[:] = [t for t in past_trades if t['result'] == 'pending']
                 log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ WIN! Reset step to 0\n")
-            elif result == 'loss' or result == 'closed':
+            elif result == 'draw':
+                past_trades[:] = [t for t in past_trades if t.get('order_id') != order_id]
+                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔄 DRAW! Refunded - no change to step {global_martingale_step}\n")
+            elif result == 'loss':
                 if global_martingale_step < 8:
                     global_martingale_step += 1
                     log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ LOSS! Step increased to {global_martingale_step}\n")
@@ -452,7 +444,7 @@ async def check_result_from_client(order_id: str, wait_seconds: int):
                     global_martingale_step = 0
                     log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔄 Max steps reached, reset to 0\n")
         else:
-            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⚠️ Result not found, keeping as pending\n")
+            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⚠️ Result timeout or not found\n")
             
     except Exception as e:
         log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ Error: {e}\n")
@@ -645,12 +637,9 @@ async def execute_strategy_trade(client, asset_name: str, order_direction: Order
             log_to_file(f"[{timestamp}] ✅ Order placed! ID: {order_result.order_id}\n")
             log_to_file(f"[{timestamp}] 🚀 Trade placed successfully! Checking result after trade completes...\n")
             
-            # Schedule result check after trade duration
-            # The WebSocket will receive the result, we just need to check client._order_results
-            asyncio.create_task(check_result_from_client(
-                order_result.order_id,
-                signal['time_minutes'] * 60 + 5  # Wait for trade duration + 5 seconds
-            ))
+            # Schedule result check - check_win will wait for the result
+            wait_time = signal['time_minutes'] * 60 + 10  # Trade duration + 10 seconds buffer
+            asyncio.create_task(check_result_from_client(order_result.order_id, wait_time))
             
             # Return immediately - trade is placed!
             return order_result

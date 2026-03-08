@@ -1,4 +1,4 @@
-Bot started at 2026-03-08 11:06:59
+Bot started at 2026-03-08 19:40:51
 Connected to: Test
 Pre-connected to PocketOption: Ready for instant trades!
 Processed 50 historical messages (skipped for execution)
@@ -12,27 +12,58 @@ Messages will execute within < 10ms of arrival
 ⚡ ULTRA-FAST MODE: Pre-connected for instant first trade
 
 🔔 Real-time event handler registered - INSTANT execution mode active
+🔄 Creating persistent client (first time - takes ~25 seconds)...
+🔑 Using DEMO SSID
+📡 Registering WebSocket event listener for trade results...
+✅ Event listener registered successfully
+🔌 Connecting to PocketOption (taking proper time for quality connection)...
+💰 Fetching balance (ensuring accurate data)...
+⚠️ Balance fetch failed (but connection OK): Balance data not available
+✅ Connected! Proceeding without balance check
+⚡ Connection established - all future trades will be INSTANT!
 
-[11:07:21.026] 🔔 NEW MESSAGE RECEIVED (ID: 165)
-[11:07:21.028] ⚡ Message processed INSTANTLY
+[19:44:12.702] 🔔 NEW MESSAGE RECEIVED (ID: 206)
+[19:44:12.707] ⚡ Message processed INSTANTLY
 Pending signals: 1, Upcoming trades: 0
 
-[11:07:31.039] 🔔 NEW MESSAGE RECEIVED (ID: 166)
+[19:44:18.892] 🔔 NEW MESSAGE RECEIVED (ID: 207)
 
-[11:07:31] 📅 Scheduling trade: AUD/USD OTC BUY in 0.001s
-[11:07:31] ✅ Trade scheduled, timer started
-[11:07:31.046] ⚡ Message processed INSTANTLY
+[19:44:18] 📅 Scheduling trade: GBP/JPY OTC BUY in 0.001s
+[19:44:18] ✅ Trade scheduled, timer started
+[19:44:18.898] ⚡ Message processed INSTANTLY
 Pending signals: 2, Upcoming trades: 1
 
-[11:07:31] ⚡ Executing scheduled trade: AUD/USD OTC BUY
-[11:07:31] Creating event loop for trade execution
-[11:07:31] Running trade execution
+[19:44:18] ⚡ Executing scheduled trade: GBP/JPY OTC BUY
+[19:44:18] Creating event loop for trade execution
+[19:44:18] Running trade execution
 
-[11:07:31.062] 📥 Trade signal received: AUD/USD OTC BUY
-[11:07:31.076] 📍 Mapped asset: AUDUSD_otc
+[19:44:18.920] 📥 Trade signal received: GBP/JPY OTC BUY
+[19:44:18.921] 📍 Mapped asset: GBPJPY_otc
+[19:44:18.922] ⚡ Placing order: GBPJPY_otc BUY $1.00 Step 0
+[19:44:18.922] ✅ Order placed! ID: b7380753-a4f3-4dc1-b03b-bbf87e707c5a
+[19:44:18.922] 🚀 Trade placed successfully! Checking result after trade completes...
+[19:44:49] ✅ Trade execution completed
 
-[11:07:31.083] ⚡ Placing order: AUDUSD_otc BUY $1.00 Global Step 0
-[11:07:31.083] ✅ Order placed! ID: 5dedd0e0-0bff-440a-bfea-9ce495fafd1f
-[11:07:31.083] 🚀 Returning immediately - result will be checked in background
-[11:08:01.256] ⏳ Background task: Waiting 65s for trade 5dedd0e0-0bff-440a-bfea-9ce495fafd1f
-[11:08:01] ✅ Trade execution completed
+[19:47:41.784] 🔔 NEW MESSAGE RECEIVED (ID: 208)
+[19:47:41.788] ⚡ Message processed INSTANTLY
+Pending signals: 3, Upcoming trades: 0
+
+[19:47:44.630] 🔔 NEW MESSAGE RECEIVED (ID: 209)
+
+[19:47:44] 📅 Scheduling trade: GBP/JPY OTC BUY in 0.001s
+[19:47:44] ✅ Trade scheduled, timer started
+[19:47:44.636] ⚡ Message processed INSTANTLY
+Pending signals: 4, Upcoming trades: 1
+
+[19:47:44] ⚡ Executing scheduled trade: GBP/JPY OTC BUY
+[19:47:44] Creating event loop for trade execution
+[19:47:44] Running trade execution
+
+[19:47:44.647] 📥 Trade signal received: GBP/JPY OTC BUY
+[19:47:44.648] 📍 Mapped asset: GBPJPY_otc
+
+[19:47:44.649] 📊 1 pending trade(s), using step 1
+[19:47:44.651] ⚡ Placing order: GBPJPY_otc BUY $2.50 Step 1
+[19:47:44.651] ✅ Order placed! ID: 1dbf0e74-939d-435b-86d0-f21ae731aa51
+[19:47:44.651] 🚀 Trade placed successfully! Checking result after trade completes...
+[19:48:14] ✅ Trade execution completed

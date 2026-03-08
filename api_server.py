@@ -1286,14 +1286,54 @@ if __name__ == '__main__':
     print("   3. Set trading parameters and click Start Trading")
     print("=" * 60)
     
-    # 🔥 AUTO-START DISABLED - Frontend handles auto-start
-    # Server-side auto-start was causing duplicate trades because both
-    # server and frontend would start separate bot instances
-    """
+    # 🔥 AUTO-START TRADING BOT ON SERVER STARTUP (Railway only)
+    # Only auto-start if not already running
     def auto_start_bot():
-        # ... disabled ...
-        pass
-    """
+        """Auto-start trading bot in background"""
+        import time
+        time.sleep(5)  # Wait 5 seconds for server to be ready
+        
+        global trading_active, trading_thread
+        
+        # Only start if not already active
+        if not trading_active:
+            try:
+                print("\n" + "=" * 60)
+                print("🤖 AUTO-STARTING TRADING BOT")
+                print("=" * 60)
+                
+                # Get config from environment
+                initial_amount = float(os.getenv('TRADE_AMOUNT', '1.0'))
+                is_demo = os.getenv('IS_DEMO', 'True').lower() == 'true'
+                multiplier = float(os.getenv('MULTIPLIER', '2.5'))
+                martingale_step = int(os.getenv('MARTINGALE_STEP', '0'))
+                
+                print(f"📊 Configuration:")
+                print(f"   Amount: ${initial_amount}")
+                print(f"   Mode: {'DEMO' if is_demo else 'REAL'}")
+                print(f"   Multiplier: {multiplier}x")
+                print(f"   Starting Step: {martingale_step}")
+                print("=" * 60)
+                
+                trading_active = True
+                trading_thread = threading.Thread(
+                    target=run_trading_bot,
+                    args=(initial_amount, is_demo, multiplier, martingale_step),
+                    daemon=True
+                )
+                trading_thread.start()
+                print("✅ Trading bot started automatically!")
+                print("🎯 Bot is now monitoring Telegram signals")
+                print("=" * 60 + "\n")
+                    
+            except Exception as e:
+                print(f"❌ Auto-start failed: {e}")
+                print("💡 You can start manually from the web interface")
+                print("=" * 60 + "\n")
+    
+    # Start auto-start in background thread
+    auto_start_thread = threading.Thread(target=auto_start_bot, daemon=True)
+    auto_start_thread.start()
     
     # Disable debug mode in production
     is_production = os.getenv('RAILWAY_ENVIRONMENT') is not None
