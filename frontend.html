@@ -126,7 +126,7 @@
                             <span class="text-[10px] text-slate-400 uppercase font-bold">Real Balance</span>
                             <span class="text-sm font-bold text-success" id="realBalance">$0.00</span>
                         </div>
-                        <button id="refreshBalanceBtn" onclick="refreshBalance()" class="ml-2 p-1 text-slate-400 hover:text-primary transition-colors" title="Refresh Balance (15-25s)">
+                        <button id="refreshBalanceBtn" onclick="refreshBalance()" class="ml-2 p-1 text-slate-400 hover:text-primary transition-colors" title="Refresh Balance (20-35s)">
                             <span class="material-symbols-outlined text-sm">refresh</span>
                         </button>
                     </div>
@@ -766,6 +766,84 @@
         // Use current domain for API calls (works both locally and on Railway)
         const API_BASE = window.location.origin + '/api';
         let currentCsvFile = '';
+        
+        // LocalStorage cache management
+        const CACHE_KEYS = {
+            BALANCE: 'po_balance_cache',
+            BALANCE_TIMESTAMP: 'po_balance_timestamp',
+            TRADING_CONFIG: 'po_trading_config',
+            CONNECTION_STATE: 'po_connection_state'
+        };
+        
+        const CACHE_DURATION = 10000; // 10 seconds
+        
+        // Cache helpers
+        function getCachedData(key) {
+            try {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : null;
+            } catch (e) {
+                console.error('Cache read error:', e);
+                return null;
+            }
+        }
+        
+        function setCachedData(key, data) {
+            try {
+                localStorage.setItem(key, JSON.stringify(data));
+            } catch (e) {
+                console.error('Cache write error:', e);
+            }
+        }
+        
+        function isCacheValid(timestampKey) {
+            const timestamp = localStorage.getItem(timestampKey);
+            if (!timestamp) return false;
+            const age = Date.now() - parseInt(timestamp);
+            return age < CACHE_DURATION;
+        }
+        
+        // Load cached balance on startup
+        function loadCachedBalance() {
+            if (isCacheValid(CACHE_KEYS.BALANCE_TIMESTAMP)) {
+                const cached = getCachedData(CACHE_KEYS.BALANCE);
+                if (cached) {
+                    document.getElementById('demoBalance').textContent = '$' + (cached.demo || 0).toFixed(2);
+                    document.getElementById('realBalance').textContent = '$' + (cached.real || 0).toFixed(2);
+                    const currentBalance = cached.demo > 0 ? cached.demo : cached.real;
+                    document.getElementById('currentBalanceDisplay').textContent = '$' + currentBalance.toFixed(2);
+                    addLog('📦 Loaded cached balance from localStorage', 'info');
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // Load cached trading config
+        function loadCachedConfig() {
+            const config = getCachedData(CACHE_KEYS.TRADING_CONFIG);
+            if (config) {
+                if (config.initialAmount) document.getElementById('initialAmount').value = config.initialAmount;
+                if (config.multiplier) document.getElementById('multiplier').value = config.multiplier;
+                if (config.accountType) document.getElementById('accountType').value = config.accountType;
+                if (config.martingaleStep) document.getElementById('martingaleStep').value = config.martingaleStep;
+                updateStakeDisplay();
+                updateMultiplierDisplay();
+                updateMartingalePreview();
+                addLog('📦 Loaded cached config from localStorage', 'info');
+            }
+        }
+        
+        // Save trading config to cache
+        function saveTradingConfigToCache() {
+            const config = {
+                initialAmount: document.getElementById('initialAmount').value,
+                multiplier: document.getElementById('multiplier').value,
+                accountType: document.getElementById('accountType').value,
+                martingaleStep: document.getElementById('martingaleStep').value
+            };
+            setCachedData(CACHE_KEYS.TRADING_CONFIG, config);
+        }
         
         // Section Navigation
         function showSection(sectionName) {
@@ -1541,7 +1619,18 @@
         
         async function updateBalance() {
             try {
-                addLog('Fetching balance from server...', 'info');
+                // Check localStorage cache first
+                if (isCacheValid(CACHE_KEYS.BALANCE_TIMESTAMP)) {
+                    const cached = getCachedData(CACHE_KEYS.BALANCE);
+                    if (cached) {
+                        document.getElementById('demoBalance').textContent = '$' + (cached.demo || 0).toFixed(2);
+                        document.getElementById('realBalance').textContent = '$' + (cached.real || 0).toFixed(2);
+                        const currentBalance = cached.demo > 0 ? cached.demo : cached.real;
+                        document.getElementById('currentBalanceDisplay').textContent = '$' + currentBalance.toFixed(2);
+                        return; // Use cache, skip API call
+                    }
+                }
+                
                 const response = await fetch(`${API_BASE}/balance`);
                 const data = await response.json();
                 
@@ -1560,11 +1649,17 @@
                     const accountType = document.getElementById('accountType').value === 'true' ? 'DEMO' : 'REAL';
                     document.getElementById('accountTypeDisplay').textContent = accountType;
                     
-                    addLog(`Balance updated - Demo: $${demoBalance.toFixed(2)}, Real: $${realBalance.toFixed(2)}`, 'success');
+                    // Cache the balance
+                    setCachedData(CACHE_KEYS.BALANCE, { demo: demoBalance, real: realBalance });
+                    localStorage.setItem(CACHE_KEYS.BALANCE_TIMESTAMP, Date.now().toString());
                     
-                    // Show cached indicator if present
-                    if (data.cached) {
-                        console.log('Using cached balance data');
+                    // Check for errors or warnings
+                    if (data.error) {
+                        addLog('⚠️ ' + data.error, 'warning');
+                    } else if (data.warning) {
+                        addLog('⚠️ ' + data.warning, 'warning');
+                    } else if (!data.cached) {
+                        addLog(`Balance updated - Demo: $${demoBalance.toFixed(2)}, Real: $${realBalance.toFixed(2)}`, 'success');
                     }
                 } else {
                     // Handle error but don't show alert on auto-refresh
@@ -1572,7 +1667,13 @@
                     console.error('Balance fetch error:', data.error);
                 }
             } catch (error) {
-                addLog('Failed to connect to server for balance', 'error');
+                // On error, try to use cached data
+                const cached = getCachedData(CACHE_KEYS.BALANCE);
+                if (cached) {
+                    addLog('Using cached balance due to connection error', 'warning');
+                } else {
+                    addLog('Failed to connect to server for balance', 'error');
+                }
                 console.error('Error updating balance:', error);
             }
         }
@@ -1588,7 +1689,7 @@
             
             try {
                 addLog('🔄 Manual balance refresh requested...', 'primary');
-                addLog('⏳ Fetching from PocketOption (15-25s for quality connection)...', 'info');
+                addLog('⏳ Fetching from PocketOption (20-35s for quality connection)...', 'info');
                 showAlert('Fetching balance from PocketOption...', 'success');
                 
                 const startTime = Date.now();
@@ -1618,8 +1719,17 @@
                     const currentBalance = demoBalance > 0 ? demoBalance : realBalance;
                     document.getElementById('currentBalanceDisplay').textContent = '$' + currentBalance.toFixed(2);
                     
-                    addLog(`✓ Balance fetched in ${duration}s - Demo: $${demoBalance.toFixed(2)}, Real: $${realBalance.toFixed(2)}`, 'success');
-                    showAlert(`Balance updated! Demo: $${demoBalance.toFixed(2)}, Real: $${realBalance.toFixed(2)}`, 'success');
+                    // Check for errors
+                    if (data.error) {
+                        addLog(`⚠️ ${data.error}`, 'warning');
+                        showAlert(data.error, 'error');
+                    } else if (data.warning) {
+                        addLog(`⚠️ ${data.warning}`, 'warning');
+                        showAlert(`Balance updated with warnings. Check logs for details.`, 'success');
+                    } else {
+                        addLog(`✓ Balance fetched in ${duration}s - Demo: $${demoBalance.toFixed(2)}, Real: $${realBalance.toFixed(2)}`, 'success');
+                        showAlert(`Balance updated! Demo: $${demoBalance.toFixed(2)}, Real: $${realBalance.toFixed(2)}`, 'success');
+                    }
                 } else {
                     addLog('✗ Balance fetch failed: ' + (data.error || 'Unknown error'), 'error');
                     showAlert(data.error || 'Failed to fetch balance', 'error');
@@ -1896,6 +2006,11 @@
         // Initial load
         addLog('🚀 Deep Space Trading Bot initialized', 'success');
         addLog('Connecting to server...', 'info');
+        
+        // Load cached data first for instant UI
+        loadCachedBalance();
+        loadCachedConfig();
+        
         checkServerConnection(); // Check server first
         loadConfig();
         updateStatus();
@@ -1910,6 +2025,12 @@
             addLog('🤖 Auto-starting trading bot...', 'primary');
             startTrading();
         }, 2000);
+        
+        // Save config to cache when changed
+        document.getElementById('initialAmount').addEventListener('change', saveTradingConfigToCache);
+        document.getElementById('multiplier').addEventListener('change', saveTradingConfigToCache);
+        document.getElementById('accountType').addEventListener('change', saveTradingConfigToCache);
+        document.getElementById('martingaleStep').addEventListener('change', saveTradingConfigToCache);
         
         // Initialize quick inputs with slider values
         document.getElementById('quickTradeAmount').value = document.getElementById('initialAmount').value;

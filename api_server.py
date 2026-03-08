@@ -42,6 +42,100 @@ temp_phone_code_hash = None  # Temporary storage for OTP verification
 active_client = None  # Store active PocketOption client
 client_balance = {'demo': 0, 'real': 0}  # Cache balance
 
+# Persistent client management
+class PersistentClientManager:
+    """Manages a single persistent PocketOption client connection"""
+    def __init__(self):
+        self.demo_client = None
+        self.real_client = None
+        self.demo_connected = False
+        self.real_connected = False
+        self.last_balance_fetch = None
+        self.balance_cache = {'demo': 0, 'real': 0, 'currency': 'USD'}
+        self.connection_lock = threading.Lock()
+        self.ssid = None
+        
+    async def get_demo_client(self, ssid: str):
+        """Get or create demo client"""
+        from pocketoptionapi_async import AsyncPocketOptionClient
+        
+        # Check if SSID changed
+        if self.ssid != ssid:
+            await self.disconnect_all()
+            self.ssid = ssid
+        
+        # Return existing client if connected
+        if self.demo_client and self.demo_connected:
+            try:
+                # Test connection
+                await asyncio.wait_for(self.demo_client.get_balance(), timeout=2.0)
+                print("✅ Reusing existing demo client connection")
+                return self.demo_client
+            except:
+                print("⚠️ Demo client connection lost, reconnecting...")
+                self.demo_connected = False
+        
+        # Create new client
+        print("🔌 Creating new demo client connection...")
+        self.demo_client = AsyncPocketOptionClient(ssid=ssid, is_demo=True)
+        await asyncio.wait_for(self.demo_client.connect(), timeout=20.0)
+        self.demo_connected = True
+        print("✅ Demo client connected")
+        return self.demo_client
+    
+    async def get_real_client(self, ssid: str):
+        """Get or create real client"""
+        from pocketoptionapi_async import AsyncPocketOptionClient
+        
+        # Check if SSID changed
+        if self.ssid != ssid:
+            await self.disconnect_all()
+            self.ssid = ssid
+        
+        # Return existing client if connected
+        if self.real_client and self.real_connected:
+            try:
+                # Test connection
+                await asyncio.wait_for(self.real_client.get_balance(), timeout=2.0)
+                print("✅ Reusing existing real client connection")
+                return self.real_client
+            except:
+                print("⚠️ Real client connection lost, reconnecting...")
+                self.real_connected = False
+        
+        # Create new client
+        print("🔌 Creating new real client connection...")
+        self.real_client = AsyncPocketOptionClient(ssid=ssid, is_demo=False)
+        await asyncio.wait_for(self.real_client.connect(), timeout=20.0)
+        self.real_connected = True
+        print("✅ Real client connected")
+        return self.real_client
+    
+    async def disconnect_all(self):
+        """Disconnect all clients"""
+        if self.demo_client:
+            try:
+                await self.demo_client.disconnect()
+                await asyncio.sleep(0.2)
+            except:
+                pass
+            self.demo_client = None
+            self.demo_connected = False
+        
+        if self.real_client:
+            try:
+                await self.real_client.disconnect()
+                await asyncio.sleep(0.2)
+            except:
+                pass
+            self.real_client = None
+            self.real_connected = False
+        
+        print("🔌 All clients disconnected")
+
+# Global persistent client manager
+persistent_client_manager = PersistentClientManager()
+
 @app.route('/', methods=['GET'])
 def index():
     """Serve the frontend HTML"""
@@ -71,9 +165,25 @@ def index():
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
+    global persistent_client_manager
     return jsonify({
         'status': 'ok',
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.now().isoformat(),
+        'connections': {
+            'demo': persistent_client_manager.demo_connected,
+            'real': persistent_client_manager.real_connected
+        }
+    })
+
+@app.route('/api/connection/status', methods=['GET'])
+def get_connection_status():
+    """Get persistent connection status"""
+    global persistent_client_manager
+    return jsonify({
+        'demo_connected': persistent_client_manager.demo_connected,
+        'real_connected': persistent_client_manager.real_connected,
+        'last_balance_fetch': persistent_client_manager.last_balance_fetch.isoformat() if persistent_client_manager.last_balance_fetch else None,
+        'cached_balance': persistent_client_manager.balance_cache
     })
 
 @app.route('/api/config', methods=['GET'])
@@ -779,7 +889,7 @@ def get_trade_analysis():
 def get_balance():
     """Get current account balance from PocketOption"""
     try:
-        global client_balance
+        global client_balance, persistent_client_manager
         
         # Check if SSID is configured
         ssid = os.getenv('SSID')
@@ -791,60 +901,60 @@ def get_balance():
                 'error': 'SSID not configured. Please configure SSID in Configuration section first.'
             }), 400
         
+        # Check cache age (cache for 5 seconds)
+        if persistent_client_manager.last_balance_fetch:
+            cache_age = (datetime.now() - persistent_client_manager.last_balance_fetch).total_seconds()
+            if cache_age < 5:
+                print(f"💾 Using cached balance (age: {cache_age:.1f}s)")
+                return jsonify({
+                    'demo_balance': persistent_client_manager.balance_cache['demo'],
+                    'real_balance': persistent_client_manager.balance_cache['real'],
+                    'currency': persistent_client_manager.balance_cache['currency'],
+                    'timestamp': datetime.now().isoformat(),
+                    'cached': True
+                })
+        
         print("🔄 Fetching balance from PocketOption...")
         
-        # Import client
-        from pocketoptionapi_async import AsyncPocketOptionClient
-        
         async def fetch_both_balances():
-            results = {'demo': 0, 'real': 0, 'currency': 'USD'}
-            demo_client = None
-            real_client = None
+            results = {'demo': 0, 'real': 0, 'currency': 'USD', 'errors': []}
             
-            # Fetch Demo Balance
+            # Fetch Demo Balance using persistent client
             try:
-                print("📊 Connecting to Demo account...")
-                demo_client = AsyncPocketOptionClient(ssid=ssid, is_demo=True)
-                await asyncio.wait_for(demo_client.connect(), timeout=15.0)
+                print("📊 Getting demo balance...")
+                demo_client = await persistent_client_manager.get_demo_client(ssid)
                 demo_balance = await asyncio.wait_for(demo_client.get_balance(), timeout=10.0)
                 results['demo'] = demo_balance.balance
                 results['currency'] = demo_balance.currency
                 print(f"✅ Demo Balance: ${demo_balance.balance:.2f}")
             except asyncio.TimeoutError:
-                print("⏱️ Demo balance fetch timeout")
+                error_msg = "Demo balance fetch timeout - SSID may be expired"
+                print(f"⏱️ {error_msg}")
+                results['errors'].append(error_msg)
+                persistent_client_manager.demo_connected = False
             except Exception as e:
-                print(f"❌ Error fetching demo balance: {e}")
-            finally:
-                # Properly cleanup demo client
-                if demo_client:
-                    try:
-                        await demo_client.disconnect()
-                        # Brief delay for task cancellation to complete
-                        await asyncio.sleep(0.2)
-                    except Exception as e:
-                        print(f"⚠️ Demo client cleanup error: {e}")
+                error_msg = f"Error fetching demo balance: {str(e)}"
+                print(f"❌ {error_msg}")
+                results['errors'].append(error_msg)
+                persistent_client_manager.demo_connected = False
             
-            # Fetch Real Balance
+            # Fetch Real Balance using persistent client
             try:
-                print("💰 Connecting to Real account...")
-                real_client = AsyncPocketOptionClient(ssid=ssid, is_demo=False)
-                await asyncio.wait_for(real_client.connect(), timeout=15.0)
+                print("💰 Getting real balance...")
+                real_client = await persistent_client_manager.get_real_client(ssid)
                 real_balance = await asyncio.wait_for(real_client.get_balance(), timeout=10.0)
                 results['real'] = real_balance.balance
                 print(f"✅ Real Balance: ${real_balance.balance:.2f}")
             except asyncio.TimeoutError:
-                print("⏱️ Real balance fetch timeout")
+                error_msg = "Real balance fetch timeout - SSID may be expired"
+                print(f"⏱️ {error_msg}")
+                results['errors'].append(error_msg)
+                persistent_client_manager.real_connected = False
             except Exception as e:
-                print(f"❌ Error fetching real balance: {e}")
-            finally:
-                # Properly cleanup real client
-                if real_client:
-                    try:
-                        await real_client.disconnect()
-                        # Brief delay for task cancellation to complete
-                        await asyncio.sleep(0.2)
-                    except Exception as e:
-                        print(f"⚠️ Real client cleanup error: {e}")
+                error_msg = f"Error fetching real balance: {str(e)}"
+                print(f"❌ {error_msg}")
+                results['errors'].append(error_msg)
+                persistent_client_manager.real_connected = False
             
             return results
         
@@ -854,18 +964,43 @@ def get_balance():
         result = loop.run_until_complete(fetch_both_balances())
         loop.close()
         
+        # Check if both fetches failed
+        if result['demo'] == 0 and result['real'] == 0 and result['errors']:
+            error_message = '; '.join(result['errors'])
+            print(f"⚠️ Balance fetch failed: {error_message}")
+            return jsonify({
+                'demo_balance': persistent_client_manager.balance_cache.get('demo', 0),
+                'real_balance': persistent_client_manager.balance_cache.get('real', 0),
+                'currency': 'USD',
+                'error': f'Balance fetch timeout. {error_message}. Please update your SSID in Configuration.',
+                'cached': True
+            }), 200  # Return 200 but with error message
+        
         # Update cache
-        client_balance['demo'] = result['demo']
-        client_balance['real'] = result['real']
+        if result['demo'] > 0 or result['real'] > 0:
+            persistent_client_manager.balance_cache['demo'] = result['demo']
+            persistent_client_manager.balance_cache['real'] = result['real']
+            persistent_client_manager.balance_cache['currency'] = result['currency']
+            persistent_client_manager.last_balance_fetch = datetime.now()
+            
+            # Also update global cache for backward compatibility
+            client_balance['demo'] = result['demo']
+            client_balance['real'] = result['real']
         
         print(f"💾 Balance cached - Demo: ${result['demo']:.2f}, Real: ${result['real']:.2f}")
         
-        return jsonify({
+        response_data = {
             'demo_balance': result['demo'],
             'real_balance': result['real'],
             'currency': result['currency'],
             'timestamp': datetime.now().isoformat()
-        })
+        }
+        
+        # Add warning if there were errors
+        if result['errors']:
+            response_data['warning'] = '; '.join(result['errors'])
+        
+        return jsonify(response_data)
     
     except Exception as e:
         print(f"❌ Balance fetch error: {e}")
