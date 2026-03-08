@@ -316,6 +316,20 @@
                                     </table>
                                 </div>
                             </div>
+
+                            <!-- Live System Logs -->
+                            <div class="glass-card rounded-2xl overflow-hidden">
+                                <div class="p-6 border-b border-border-muted flex justify-between items-center">
+                                    <h4 class="font-bold flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-primary">terminal</span>
+                                        Live System Logs
+                                    </h4>
+                                    <button onclick="clearLogs()" class="text-xs text-danger font-bold hover:underline">Clear Logs</button>
+                                </div>
+                                <div id="systemLogs" class="bg-slate-950 p-4 h-64 overflow-y-auto custom-scrollbar font-mono text-xs space-y-1">
+                                    <div class="text-slate-500">System initialized. Waiting for activity...</div>
+                                </div>
+                            </div>
                         </div>
                         
                         <!-- Right Sidebar Widgets -->
@@ -784,6 +798,51 @@
                 document.getElementById('connectionStatus').classList.add('bg-danger');
                 document.getElementById('connectionText').textContent = 'SERVER OFFLINE';
                 document.getElementById('connectionText').classList.remove('text-success', 'text-slate-500');
+
+        // Live Logging System
+        function addLog(message, type = 'info') {
+            const logsContainer = document.getElementById('systemLogs');
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+            
+            const colors = {
+                'info': 'text-slate-400',
+                'success': 'text-success',
+                'error': 'text-danger',
+                'warning': 'text-yellow-400',
+                'primary': 'text-primary'
+            };
+            
+            const icons = {
+                'info': '•',
+                'success': '✓',
+                'error': '✗',
+                'warning': '⚠',
+                'primary': '→'
+            };
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = `${colors[type] || colors.info} flex gap-2`;
+            logEntry.innerHTML = `
+                <span class="text-slate-600">[${timestamp}]</span>
+                <span>${icons[type] || icons.info}</span>
+                <span class="flex-1">${message}</span>
+            `;
+            
+            logsContainer.appendChild(logEntry);
+            
+            // Auto-scroll to bottom
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+            
+            // Keep only last 100 logs
+            while (logsContainer.children.length > 100) {
+                logsContainer.removeChild(logsContainer.firstChild);
+            }
+        }
+        
+        function clearLogs() {
+            const logsContainer = document.getElementById('systemLogs');
+            logsContainer.innerHTML = '<div class="text-slate-500">Logs cleared. Waiting for activity...</div>';
+        }
                 document.getElementById('connectionText').classList.add('text-danger');
             } else if (error.message.includes('NetworkError')) {
                 message = '🌐 Network error. Check your internet connection.';
@@ -965,25 +1024,35 @@
             const ssid = document.getElementById('ssid').value;
             if (!ssid) {
                 showAlert('Please enter SSID', 'error');
+                addLog('✗ SSID validation failed: empty value', 'error');
                 return;
             }
             
+            addLog('🔑 Saving SSID configuration...', 'primary');
+            addLog('⏳ Connecting to PocketOption (this may take 15-25 seconds)...', 'info');
+            
             try {
+                const startTime = Date.now();
                 const response = await fetch(`${API_BASE}/ssid`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ssid })
                 });
                 
+                const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+                
                 if (response.ok) {
+                    addLog(`✓ SSID configured successfully in ${duration}s`, 'success');
                     showAlert('SSID saved successfully!', 'success');
                     document.getElementById('ssid').value = '';
                     setTimeout(() => loadConfig(), 1000);
                 } else {
                     const data = await response.json();
+                    addLog(`✗ SSID configuration failed: ${data.error || 'Unknown error'}`, 'error');
                     showAlert(data.error || 'Failed to save SSID', 'error');
                 }
             } catch (error) {
+                addLog('✗ Connection error during SSID configuration', 'error');
                 const errorMsg = handleFetchError(error, 'saveSsid');
                 showAlert(errorMsg, 'error');
             }
@@ -1172,8 +1241,11 @@
             
             if (initialAmount <= 0) {
                 showAlert('Initial amount must be greater than 0', 'error');
+                addLog('✗ Invalid trade amount: ' + initialAmount, 'error');
                 return;
             }
+            
+            addLog(`🚀 Starting bot - Amount: $${initialAmount}, Type: ${isDemo ? 'DEMO' : 'REAL'}, Multiplier: ${multiplier}x, Step: ${martingaleStep}`, 'primary');
             
             try {
                 const response = await fetch(`${API_BASE}/trading/start`, {
@@ -1320,6 +1392,7 @@
         
         async function updateBalance() {
             try {
+                addLog('Fetching balance from server...', 'info');
                 const response = await fetch(`${API_BASE}/balance`);
                 const data = await response.json();
                 
@@ -1338,25 +1411,32 @@
                     const accountType = document.getElementById('accountType').value === 'true' ? 'DEMO' : 'REAL';
                     document.getElementById('accountTypeDisplay').textContent = accountType;
                     
+                    addLog(`Balance updated - Demo: $${demoBalance.toFixed(2)}, Real: $${realBalance.toFixed(2)}`, 'success');
+                    
                     // Show cached indicator if present
                     if (data.cached) {
                         console.log('Using cached balance data');
                     }
                 } else {
                     // Handle error but don't show alert on auto-refresh
+                    addLog('Balance fetch error: ' + (data.error || 'Unknown error'), 'error');
                     console.error('Balance fetch error:', data.error);
                 }
             } catch (error) {
+                addLog('Failed to connect to server for balance', 'error');
                 console.error('Error updating balance:', error);
             }
         }
         
         async function refreshBalance() {
             try {
+                addLog('🔄 Manual balance refresh requested...', 'primary');
                 showAlert('Fetching balance from PocketOption...', 'success');
                 
+                const startTime = Date.now();
                 const response = await fetch(`${API_BASE}/balance`);
                 const data = await response.json();
+                const duration = ((Date.now() - startTime) / 1000).toFixed(2);
                 
                 if (response.ok) {
                     const demoBalance = data.demo_balance || 0;
@@ -1369,11 +1449,14 @@
                     const currentBalance = demoBalance > 0 ? demoBalance : realBalance;
                     document.getElementById('currentBalanceDisplay').textContent = '$' + currentBalance.toFixed(2);
                     
+                    addLog(`✓ Balance fetched in ${duration}s - Demo: $${demoBalance.toFixed(2)}, Real: $${realBalance.toFixed(2)}`, 'success');
                     showAlert(`Balance updated! Demo: $${demoBalance.toFixed(2)}, Real: $${realBalance.toFixed(2)}`, 'success');
                 } else {
+                    addLog('✗ Balance fetch failed: ' + (data.error || 'Unknown error'), 'error');
                     showAlert(data.error || 'Failed to fetch balance', 'error');
                 }
             } catch (error) {
+                addLog('✗ Connection error during balance fetch', 'error');
                 const errorMsg = handleFetchError(error, 'refreshBalance');
                 showAlert(errorMsg, 'error');
             }
@@ -1637,6 +1720,8 @@
         }, 5000);
         
         // Initial load
+        addLog('🚀 Deep Space Trading Bot initialized', 'success');
+        addLog('Connecting to server...', 'info');
         checkServerConnection(); // Check server first
         loadConfig();
         updateStatus();
