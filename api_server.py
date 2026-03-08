@@ -316,6 +316,71 @@ def delete_telegram_session():
     except Exception as e:
         return jsonify({'error': f'Failed to delete session: {str(e)}'}), 500
 
+@app.route('/api/clear-all-sessions', methods=['POST'])
+def clear_all_sessions():
+    """
+    Clear all session files, database locks, and temporary files
+    """
+    try:
+        files_to_delete = [
+            # Telegram session files
+            'session_testpob1234.session',
+            'session_testpob1234.session-journal',
+            
+            # Any other session files (pattern matching)
+            'session_*.session',
+            'session_*.session-journal',
+            
+            # Database lock files
+            '*.db-shm',
+            '*.db-wal',
+            '*.db-journal',
+            
+            # Temporary files
+            '*.tmp',
+            '*.lock'
+        ]
+        
+        deleted_files = []
+        
+        # Delete specific files
+        for pattern in files_to_delete:
+            if '*' in pattern:
+                # Handle wildcard patterns
+                import glob
+                matching_files = glob.glob(pattern)
+                for file_path in matching_files:
+                    if os.path.exists(file_path) and os.path.isfile(file_path):
+                        try:
+                            os.remove(file_path)
+                            deleted_files.append(file_path)
+                        except Exception as e:
+                            print(f"Could not delete {file_path}: {e}")
+            else:
+                # Handle specific files
+                if os.path.exists(pattern):
+                    try:
+                        os.remove(pattern)
+                        deleted_files.append(pattern)
+                    except Exception as e:
+                        print(f"Could not delete {pattern}: {e}")
+        
+        if deleted_files:
+            return jsonify({
+                'success': True,
+                'message': f'Successfully cleared {len(deleted_files)} file(s)',
+                'deleted_files': deleted_files
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'message': 'No session or lock files found to delete',
+                'deleted_files': []
+            })
+    
+    except Exception as e:
+        return jsonify({'error': f'Failed to clear sessions: {str(e)}'}), 500
+
 @app.route('/api/telegram/otp', methods=['POST'])
 def send_otp():
     """

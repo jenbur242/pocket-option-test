@@ -582,6 +582,40 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Clear All Sessions Section -->
+                    <div class="mt-8">
+                        <div class="glass-card rounded-2xl p-8 border-2 border-danger/20">
+                            <h4 class="text-lg font-bold flex items-center gap-2 mb-4 text-danger">
+                                <span class="material-symbols-outlined">warning</span>
+                                Troubleshooting
+                            </h4>
+                            
+                            <div class="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
+                                <div class="flex items-start gap-3">
+                                    <span class="material-symbols-outlined text-yellow-500">info</span>
+                                    <div class="text-xs text-slate-300">
+                                        <p class="font-bold mb-2">When to use Clear All Sessions:</p>
+                                        <ul class="list-disc list-inside space-y-1 text-slate-400">
+                                            <li>Telegram connection not working</li>
+                                            <li>Database locked errors</li>
+                                            <li>Session expired or corrupted</li>
+                                            <li>Bot not responding to signals</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button onclick="clearAllSessions()" class="w-full bg-danger hover:bg-danger/90 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-danger/20">
+                                <span class="material-symbols-outlined">delete_forever</span>
+                                Clear All Sessions & Locks
+                            </button>
+                            
+                            <p class="text-xs text-slate-500 text-center mt-3">
+                                This will delete all Telegram session files and database locks. You'll need to verify with OTP again.
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- History Section -->
@@ -734,6 +768,62 @@
                 alertDiv.style.transform = 'translateX(100%)';
                 setTimeout(() => alertDiv.remove(), 300);
             }, 5000);
+        }
+        
+        // Handle fetch errors with user-friendly messages
+        function handleFetchError(error, context = '') {
+            console.error(`Fetch error (${context}):`, error);
+            
+            let message = '';
+            
+            if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+                message = '⚠️ Cannot connect to server. Please ensure the API server is running.';
+                
+                // Update connection status to show disconnected
+                document.getElementById('connectionStatus').classList.remove('bg-success', 'animate-pulse');
+                document.getElementById('connectionStatus').classList.add('bg-danger');
+                document.getElementById('connectionText').textContent = 'SERVER OFFLINE';
+                document.getElementById('connectionText').classList.remove('text-success', 'text-slate-500');
+                document.getElementById('connectionText').classList.add('text-danger');
+            } else if (error.message.includes('NetworkError')) {
+                message = '🌐 Network error. Check your internet connection.';
+            } else if (error.message.includes('timeout')) {
+                message = '⏱️ Request timeout. Server is taking too long to respond.';
+            } else {
+                message = `❌ Error: ${error.message}`;
+            }
+            
+            return message;
+        }
+        
+        // Check server connectivity
+        async function checkServerConnection() {
+            try {
+                const response = await fetch(`${API_BASE}/health`, { 
+                    method: 'GET',
+                    signal: AbortSignal.timeout(5000) // 5 second timeout
+                });
+                
+                if (response.ok) {
+                    // Server is online
+                    document.getElementById('connectionStatus').classList.remove('bg-danger', 'bg-slate-500');
+                    document.getElementById('connectionStatus').classList.add('bg-success');
+                    document.getElementById('connectionText').textContent = 'SERVER ONLINE';
+                    document.getElementById('connectionText').classList.remove('text-danger', 'text-slate-500');
+                    document.getElementById('connectionText').classList.add('text-success');
+                    return true;
+                } else {
+                    throw new Error('Server returned error');
+                }
+            } catch (error) {
+                // Server is offline
+                document.getElementById('connectionStatus').classList.remove('bg-success', 'animate-pulse');
+                document.getElementById('connectionStatus').classList.add('bg-danger');
+                document.getElementById('connectionText').textContent = 'SERVER OFFLINE';
+                document.getElementById('connectionText').classList.remove('text-success', 'text-slate-500');
+                document.getElementById('connectionText').classList.add('text-danger');
+                return false;
+            }
         }
         
         // Update Displays
@@ -894,7 +984,8 @@
                     showAlert(data.error || 'Failed to save SSID', 'error');
                 }
             } catch (error) {
-                showAlert('Error: ' + error.message, 'error');
+                const errorMsg = handleFetchError(error, 'saveSsid');
+                showAlert(errorMsg, 'error');
             }
         }
         
@@ -917,7 +1008,8 @@
                     showAlert(data.error || 'Failed to send OTP', 'error');
                 }
             } catch (error) {
-                showAlert('Error: ' + error.message, 'error');
+                const errorMsg = handleFetchError(error, 'sendOtpCode');
+                showAlert(errorMsg, 'error');
             }
         }
         
@@ -1009,6 +1101,40 @@
             }
         }
         
+        async function clearAllSessions() {
+            if (!confirm('⚠️ WARNING: This will delete ALL session files and database locks.\n\nYou will need to:\n- Verify Telegram OTP again\n- Reconfigure SSID if needed\n\nAre you sure you want to continue?')) {
+                return;
+            }
+            
+            try {
+                showAlert('Clearing all sessions and locks...', 'success');
+                
+                const response = await fetch(`${API_BASE}/clear-all-sessions`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showAlert(`✅ Cleared successfully! Deleted: ${data.deleted_files.join(', ')}`, 'success');
+                    
+                    // Hide session active status
+                    document.getElementById('telegramStatus').classList.add('hidden');
+                    
+                    // Reload config after 2 seconds
+                    setTimeout(() => {
+                        loadConfig();
+                        showAlert('Please reconfigure Telegram and SSID if needed', 'success');
+                    }, 2000);
+                } else {
+                    showAlert(data.error || 'Failed to clear sessions', 'error');
+                }
+            } catch (error) {
+                const errorMsg = handleFetchError(error, 'clearAllSessions');
+                showAlert(errorMsg, 'error');
+            }
+        }
+        
         async function saveTelegram() {
             const phone = document.getElementById('phone').value;
             const apiId = document.getElementById('apiId').value;
@@ -1072,7 +1198,8 @@
                     showAlert(data.error || 'Failed to start trading', 'error');
                 }
             } catch (error) {
-                showAlert('Error: ' + error.message, 'error');
+                const errorMsg = handleFetchError(error, 'startTrading');
+                showAlert(errorMsg, 'error');
             }
         }
         
@@ -1092,7 +1219,8 @@
                     showAlert(data.error || 'Failed to stop trading', 'error');
                 }
             } catch (error) {
-                showAlert('Error: ' + error.message, 'error');
+                const errorMsg = handleFetchError(error, 'stopTrading');
+                showAlert(errorMsg, 'error');
             }
         }
         
@@ -1246,7 +1374,8 @@
                     showAlert(data.error || 'Failed to fetch balance', 'error');
                 }
             } catch (error) {
-                showAlert('Error: ' + error.message, 'error');
+                const errorMsg = handleFetchError(error, 'refreshBalance');
+                showAlert(errorMsg, 'error');
             }
         }
         
@@ -1502,7 +1631,13 @@
             updateBalance();
         }, 10000);
         
+        // Check server connection every 5 seconds
+        setInterval(() => {
+            checkServerConnection();
+        }, 5000);
+        
         // Initial load
+        checkServerConnection(); // Check server first
         loadConfig();
         updateStatus();
         updateAnalysis();
