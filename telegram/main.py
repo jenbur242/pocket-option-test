@@ -628,19 +628,16 @@ async def execute_strategy_trade(client, asset_name: str, order_direction: Order
             })
             return
         
-        # 🔥 MARTINGALE: Check if there are pending trades
-        # If yes, use current step + 1 (assume previous will lose)
-        # If no, use current step (which is either 0 or set by previous result)
+        # 🔥 MARTINGALE: Only place ONE trade at a time
+        # Don't place new trades if there are pending trades
         pending_count = sum(1 for trade in past_trades if trade['result'] == 'pending')
         
         if pending_count > 0:
-            # There are pending trades, assume they will lose and increment
-            current_step = min(global_martingale_step + pending_count, 8)
-            log_to_file(f"\n[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 📊 {pending_count} pending trade(s), using step {current_step}\n")
-        else:
-            # No pending trades, use current global step
-            current_step = global_martingale_step
+            log_to_file(f"\n[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⏸️ Skipping trade - {pending_count} pending trade(s) waiting for results\n")
+            return
         
+        # No pending trades, use current global step
+        current_step = global_martingale_step
         current_amount = TRADE_AMOUNT * (MULTIPLIER ** current_step)
         
         timestamp = datetime.now().strftime('%H:%M:%S.%f')[:-3]
