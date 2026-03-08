@@ -470,6 +470,34 @@ async def handle_trade_result(order_result):
         import traceback
         log_to_file(f"{traceback.format_exc()}\n")
 
+async def check_result_from_client(order_id: str, wait_seconds: int):
+    """Check trade result by polling client._order_results after trade completes"""
+    global past_trades, global_martingale_step
+    
+    try:
+        # Wait for trade to complete
+        await asyncio.sleep(wait_seconds)
+        
+        log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔍 Checking result for {order_id}...\n")
+        
+        # Get client
+        client = await get_persistent_client()
+        
+        # Check if result is in client._order_results
+        if order_id in client._order_results:
+            order_result = client._order_results[order_id]
+            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ Found result in client._order_results\n")
+            
+            # Process the result using the same logic as handle_trade_result
+            await handle_trade_result(order_result)
+        else:
+            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⚠️ Result not found in client._order_results, keeping as pending\n")
+            
+    except Exception as e:
+        log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ Error checking result: {e}\n")
+        import traceback
+        log_to_file(f"{traceback.format_exc()}\n")
+
 async def get_persistent_client():
     """Get or create persistent client - takes time on first connect, then instant"""
     global persistent_client
@@ -662,11 +690,14 @@ async def execute_strategy_trade(client, asset_name: str, order_direction: Order
             
             # Log success
             log_to_file(f"[{timestamp}] ✅ Order placed! ID: {order_result.order_id}\n")
-            log_to_file(f"[{timestamp}] 🚀 Trade placed successfully! WebSocket will notify us when result is ready\n")
+            log_to_file(f"[{timestamp}] 🚀 Trade placed successfully! Checking result after trade completes...\n")
             
-            # ✅ NO NEED TO SCHEDULE BACKGROUND TASK!
-            # The WebSocket event listener (handle_trade_result) will automatically
-            # be called when the trade completes. This is much faster and more reliable.
+            # Schedule result check after trade duration
+            # The WebSocket will receive the result, we just need to check client._order_results
+            asyncio.create_task(check_result_from_client(
+                order_result.order_id,
+                signal['time_minutes'] * 60 + 5  # Wait for trade duration + 5 seconds
+            ))
             
             # Return immediately - trade is placed!
             return order_result
