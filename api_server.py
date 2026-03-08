@@ -798,6 +798,8 @@ def get_balance():
         
         async def fetch_both_balances():
             results = {'demo': 0, 'real': 0, 'currency': 'USD'}
+            demo_client = None
+            real_client = None
             
             # Fetch Demo Balance
             try:
@@ -808,11 +810,19 @@ def get_balance():
                 results['demo'] = demo_balance.balance
                 results['currency'] = demo_balance.currency
                 print(f"✅ Demo Balance: ${demo_balance.balance:.2f}")
-                await demo_client.disconnect()
             except asyncio.TimeoutError:
                 print("⏱️ Demo balance fetch timeout")
             except Exception as e:
                 print(f"❌ Error fetching demo balance: {e}")
+            finally:
+                # Properly cleanup demo client
+                if demo_client:
+                    try:
+                        await demo_client.disconnect()
+                        # Give time for cleanup
+                        await asyncio.sleep(0.1)
+                    except Exception as e:
+                        print(f"⚠️ Demo client cleanup error: {e}")
             
             # Fetch Real Balance
             try:
@@ -822,11 +832,19 @@ def get_balance():
                 real_balance = await asyncio.wait_for(real_client.get_balance(), timeout=10.0)
                 results['real'] = real_balance.balance
                 print(f"✅ Real Balance: ${real_balance.balance:.2f}")
-                await real_client.disconnect()
             except asyncio.TimeoutError:
                 print("⏱️ Real balance fetch timeout")
             except Exception as e:
                 print(f"❌ Error fetching real balance: {e}")
+            finally:
+                # Properly cleanup real client
+                if real_client:
+                    try:
+                        await real_client.disconnect()
+                        # Give time for cleanup
+                        await asyncio.sleep(0.1)
+                    except Exception as e:
+                        print(f"⚠️ Real client cleanup error: {e}")
             
             return results
         
