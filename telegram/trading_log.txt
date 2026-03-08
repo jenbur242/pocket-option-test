@@ -1,7 +1,36 @@
-Bot started at 2026-03-07 22:03:51
+Bot started at 2026-03-07 22:31:53
 Connected to: Test
 Processed 50 historical messages (skipped for execution)
 ⏳ Waiting for new signals...
 
 Note: Only NEW messages received after bot startup will be executed.
 This prevents multiple old signals from executing simultaneously.
+
+[22:32:19] New message ID 138
+Pending signals: 1, Upcoming trades: 0
+
+[22:32:50] 📅 Scheduling trade: AUD/USD OTC BUY in 0.001s
+[22:32:50] ✅ Trade scheduled, timer started
+
+[22:32:50] New message ID 139
+Pending signals: 2, Upcoming trades: 1
+
+[22:32:50] ⚡ Executing scheduled trade: AUD/USD OTC BUY
+[22:32:50] Creating event loop for trade execution
+[22:32:50] Running trade execution
+
+[22:32:50] 📥 Trade signal received: AUD/USD OTC BUY
+🔑 Creating new client for trade
+🔌 Connecting to PocketOption...
+✅ Connected! DEMO Account
+💰 Balance: $48927.21
+[22:32:52] 📍 Mapped asset: AUDUSD_otc
+
+[22:32:52] Placing order: AUDUSD_otc BUY $1.00 Global Step 0
+[22:32:52] ✅ Order placed! ID: 126ea83b-1ae2-473c-bf63-b62f9d14d8d1
+[22:33:57] ⏰ Trade duration completed, checking result...
+[22:33:57] 🔍 Result data: {'result': 'loss', 'profit': -1.0, 'order_id': '126ea83b-1ae2-473c-bf63-b62f9d14d8d1', 'completed': True, 'status': 'lose'}
+[22:33:57] Result: LOSS | Profit: $-1.00
+[22:33:57] ❌ LOSS! Global step increased to 1 ($2.50)
+[22:33:57] 🔌 Client disconnected
+[22:33:57] ✅ Trade execution completed
