@@ -1304,6 +1304,18 @@
                     const sessionResponse = await fetch(`${API_BASE}/telegram/check-session`);
                     const sessionData = await sessionResponse.json();
                     
+                    // Pre-fill Telegram form fields from .env
+                    if (data.telegram.phone) {
+                        document.getElementById('phone').value = data.telegram.phone;
+                    }
+                    if (data.telegram.api_id) {
+                        document.getElementById('apiId').value = data.telegram.api_id;
+                    }
+                    // Don't pre-fill API hash for security, but show it's configured
+                    if (data.telegram.api_hash && data.telegram.api_hash !== 'Not configured') {
+                        document.getElementById('apiHash').placeholder = '••••••••' + data.telegram.api_hash.slice(-4);
+                    }
+                    
                     if (sessionData.session_exists) {
                         document.getElementById('telegramForm').classList.add('hidden');
                         document.getElementById('telegramOtpNeeded').classList.add('hidden');
@@ -1318,6 +1330,12 @@
                         document.getElementById('telegramStatus').classList.add('hidden');
                         document.getElementById('telegramOtpForm').classList.add('hidden');
                         document.getElementById('telegramOtpNeeded').classList.remove('hidden');
+                    } else {
+                        // Show form with pre-filled values
+                        document.getElementById('telegramForm').classList.remove('hidden');
+                        document.getElementById('telegramStatus').classList.add('hidden');
+                        document.getElementById('telegramOtpNeeded').classList.add('hidden');
+                        document.getElementById('telegramOtpForm').classList.add('hidden');
                     }
                 }
             } catch (error) {
