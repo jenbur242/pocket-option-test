@@ -571,8 +571,8 @@
                                 <div class="flex items-start gap-3">
                                     <span class="material-symbols-outlined text-yellow-500">warning</span>
                                     <div class="flex-1">
-                                        <p class="font-bold text-yellow-500 mb-2">⚠️ Session Required</p>
-                                        <p class="text-xs text-slate-400 mb-3">Credentials configured but session not found. Click below to receive OTP code.</p>
+                                        <p class="font-bold text-yellow-500 mb-2">⚠️ Telegram Session Required</p>
+                                        <p class="text-xs text-slate-400 mb-3">Credentials are configured but no active session found. Click below to receive OTP code on your phone.</p>
                                         <button onclick="sendOtpCode()" class="text-xs bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2 rounded-lg transition-all flex items-center gap-2">
                                             <span class="material-symbols-outlined text-sm">mobile_friendly</span>
                                             Send OTP Code
@@ -1353,6 +1353,7 @@
                     }
                     
                     if (sessionData.session_exists) {
+                        // Session exists - hide all forms, show status
                         document.getElementById('telegramForm').classList.add('hidden');
                         document.getElementById('telegramOtpNeeded').classList.add('hidden');
                         document.getElementById('telegramOtpForm').classList.add('hidden');
@@ -1361,17 +1362,24 @@
                         document.getElementById('configuredPhone').textContent = telegramPhone || 'Not set';
                         document.getElementById('configuredApiId').textContent = telegramApiId || 'Not set';
                         document.getElementById('configuredChannel').textContent = configData.telegram?.channel || FALLBACK_CONFIG.telegram_channel;
+                        
+                        // Show session type in logs
+                        const sessionType = sessionData.session_type || 'unknown';
+                        addLog(`✓ Telegram session active (${sessionType})`, 'success');
                     } else if (sessionData.needs_otp) {
+                        // Credentials configured but no session - show OTP button
                         document.getElementById('telegramForm').classList.add('hidden');
                         document.getElementById('telegramStatus').classList.add('hidden');
                         document.getElementById('telegramOtpForm').classList.add('hidden');
                         document.getElementById('telegramOtpNeeded').classList.remove('hidden');
+                        addLog('⚠️ Telegram session required - click to receive OTP', 'warning');
                     } else {
-                        // Show form with pre-filled values
+                        // No credentials - show form
                         document.getElementById('telegramForm').classList.remove('hidden');
                         document.getElementById('telegramStatus').classList.add('hidden');
                         document.getElementById('telegramOtpNeeded').classList.add('hidden');
                         document.getElementById('telegramOtpForm').classList.add('hidden');
+                        addLog('📝 Configure Telegram credentials', 'info');
                     }
                 }
             } catch (error) {
