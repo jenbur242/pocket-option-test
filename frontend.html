@@ -2353,25 +2353,33 @@
                 console.log(`Account type: ${isDemo ? 'DEMO' : 'REAL'}, Toggle checked: ${toggle.checked}`);
                 
                 // Check if trading is already active
+                let alreadyActive = false;
                 try {
                     const statusResponse = await fetch(`${API_BASE}/trading/status`);
-                    const statusData = await statusResponse.json();
-                    
-                    if (statusData.active) {
-                        console.log('✅ Trading already active, skipping auto-start');
-                        addLog('✓ Trading already active', 'success');
-                        return;
+                    if (statusResponse.ok) {
+                        const statusData = await statusResponse.json();
+                        
+                        if (statusData.active) {
+                            console.log('✅ Trading already active, skipping auto-start');
+                            addLog('✓ Trading already active', 'success');
+                            alreadyActive = true;
+                            // Make sure toggle reflects active state
+                            toggle.checked = true;
+                            document.getElementById('toggleLabel').textContent = 'ON';
+                        }
                     }
                 } catch (error) {
                     console.error('Error checking status:', error);
+                    // If status check fails, proceed with auto-start anyway
                 }
                 
-                // Only start if toggle is checked (it's checked by default in HTML)
-                if (toggle.checked) {
+                // Only start if toggle is checked AND not already active
+                if (toggle.checked && !alreadyActive) {
                     addLog(`🤖 Auto-starting trading bot in ${isDemo ? 'DEMO' : 'REAL'} mode...`, 'primary');
                     console.log('Calling startTrading()...');
                     startTrading().then(() => {
                         console.log('✅ startTrading() completed');
+                        addLog('✓ Trading bot started successfully', 'success');
                     }).catch(err => {
                         console.error('❌ startTrading() error:', err);
                         addLog('✗ Auto-start failed: ' + err.message, 'error');
@@ -2379,8 +2387,9 @@
                         toggle.checked = false;
                         document.getElementById('toggleLabel').textContent = 'OFF';
                     });
-                } else {
+                } else if (!toggle.checked) {
                     console.log('Toggle is OFF, skipping auto-start');
+                    addLog('⏸ Auto-start disabled (toggle is OFF)', 'info');
                 }
             }, 2000);
             
