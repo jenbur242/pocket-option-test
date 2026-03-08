@@ -1,4 +1,4 @@
-Bot started at 2026-03-08 19:40:51
+Bot started at 2026-03-08 21:43:47
 Connected to: Test
 Pre-connected to PocketOption: Ready for instant trades!
 Processed 50 historical messages (skipped for execution)
@@ -12,58 +12,426 @@ Messages will execute within < 10ms of arrival
 ⚡ ULTRA-FAST MODE: Pre-connected for instant first trade
 
 🔔 Real-time event handler registered - INSTANT execution mode active
+
+[21:48:19.163] 🔔 NEW MESSAGE RECEIVED (ID: 226)
+[21:48:19.167] ⚡ Message processed INSTANTLY
+Pending signals: 4, Upcoming trades: 0
+
+[21:48:19.168] 🔔 NEW MESSAGE RECEIVED (ID: 227)
+
+[21:48:19] 📅 Scheduling trade: GBP/JPY OTC BUY in 0.001s
+[21:48:19] ✅ Trade scheduled, timer started
+[21:48:19.173] ⚡ Message processed INSTANTLY
+Pending signals: 5, Upcoming trades: 1
+
+[21:48:19.173] 🔔 NEW MESSAGE RECEIVED (ID: 228)
+[21:48:19.174] ⚡ Message processed INSTANTLY
+Pending signals: 6, Upcoming trades: 1
+
+[21:48:19.175] 🔔 NEW MESSAGE RECEIVED (ID: 229)
+
+[21:48:19] 📅 Scheduling trade: GBP/JPY OTC BUY in 0.001s
+
+[21:48:19] ⚡ Executing scheduled trade: GBP/JPY OTC BUY
+[21:48:19] Creating event loop for trade execution
+[21:48:19] ✅ Trade scheduled, timer started
+[21:48:19.184] ⚡ Message processed INSTANTLY
+Pending signals: 6, Upcoming trades: 0
+
+[21:48:19.185] 🔔 NEW MESSAGE RECEIVED (ID: 230)
+[21:48:19.186] ⚡ Message processed INSTANTLY
+[21:48:19] Running trade execution
+Pending signals: 7, Upcoming trades: 0
+
+[21:48:19.187] 📥 Trade signal received: GBP/JPY OTC BUY
+
+[21:48:19.187] 🔔 NEW MESSAGE RECEIVED (ID: 231)
+🔄 Creating persistent client (first time - takes ~25 seconds)...
+
+[21:48:19] 📅 Scheduling trade: GBP/JPY OTC BUY in 0.001s
+🔑 Using DEMO SSID
+🔌 Connecting to PocketOption (taking proper time for quality connection)...
+[21:48:19] ✅ Trade scheduled, timer started
+
+[21:48:19] ⚡ Executing scheduled trade: GBP/JPY OTC BUY
+[21:48:19.199] ⚡ Message processed INSTANTLY
+Pending signals: 7, Upcoming trades: 0
+[21:48:19] Creating event loop for trade execution
+
+[21:48:19.201] 🔔 NEW MESSAGE RECEIVED (ID: 232)
+[21:48:19.202] ⚡ Message processed INSTANTLY
+Pending signals: 8, Upcoming trades: 0
+
+[21:48:19.204] 🔔 NEW MESSAGE RECEIVED (ID: 233)
+
+[21:48:19] 📅 Scheduling trade: GBP/JPY OTC BUY in 0.001s
+
+[21:48:19] ⚡ Executing scheduled trade: GBP/JPY OTC BUY
+[21:48:19] Creating event loop for trade execution
+[21:48:19] Running trade execution
+
+[21:48:19.209] 📥 Trade signal received: GBP/JPY OTC BUY
 🔄 Creating persistent client (first time - takes ~25 seconds)...
 🔑 Using DEMO SSID
-📡 Registering WebSocket event listener for trade results...
-✅ Event listener registered successfully
+🔌 Connecting to PocketOption (taking proper time for quality connection)...
+[21:48:19] ✅ Trade scheduled, timer started
+[21:48:19.214] ⚡ Message processed INSTANTLY
+[21:48:19] Running trade execution
+Pending signals: 8, Upcoming trades: 0
+
+[21:48:19.215] 📥 Trade signal received: GBP/JPY OTC BUY
+🔄 Creating persistent client (first time - takes ~25 seconds)...
+🔑 Using DEMO SSID
+🔌 Connecting to PocketOption (taking proper time for quality connection)...
+
+[21:48:19] ⚡ Executing scheduled trade: GBP/JPY OTC BUY
+[21:48:19] Creating event loop for trade execution
+[21:48:19] Running trade execution
+
+[21:48:19.224] 📥 Trade signal received: GBP/JPY OTC BUY
+🔄 Creating persistent client (first time - takes ~25 seconds)...
+🔑 Using DEMO SSID
 🔌 Connecting to PocketOption (taking proper time for quality connection)...
 💰 Fetching balance (ensuring accurate data)...
-⚠️ Balance fetch failed (but connection OK): Balance data not available
+💰 Fetching balance (ensuring accurate data)...
+💰 Fetching balance (ensuring accurate data)...
+💰 Fetching balance (ensuring accurate data)...
+⚠️ Balance fetch failed (but connection OK): Not connected to PocketOption
+⚠️ Balance fetch failed (but connection OK): Not connected to PocketOption
+✅ Connected! Proceeding without balance check
+Not connected to PocketOption
+⚠️ Balance fetch failed (but connection OK): Not connected to PocketOption
+✅ Connected! Proceeding without balance check
 ✅ Connected! Proceeding without balance check
 ⚡ Connection established - all future trades will be INSTANT!
+⚡ Connection established - all future trades will be INSTANT!
+✅ Connected! Proceeding without balance check
+❌ Error: Connection failed
+❌ Error: Connection failed
+⚡ Connection established - all future trades will be INSTANT!
+[21:48:19.299] ❌ Trade execution error: Connection failed
+❌ Error: Connection failed
+❌ Error: Connection failed
+[21:48:19.300] ❌ Trade execution error: Connection failed
+[21:48:19.303] ❌ Trade execution error: Connection failed
+[21:48:19.304] ❌ Trade execution error: Connection failed
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\pocket-option-test\telegram\main.py", line 537, in execute_trade_signal
+    async def execute_trade_signal(signal: Dict):
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Desktop\pocket-option-test\telegram\main.py", line 507, in get_persistent_client
+    # Try to get balance to verify connection
+Exception: Connection failed
 
-[19:44:12.702] 🔔 NEW MESSAGE RECEIVED (ID: 206)
-[19:44:12.707] ⚡ Message processed INSTANTLY
-Pending signals: 1, Upcoming trades: 0
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\pocket-option-test\telegram\main.py", line 537, in execute_trade_signal
+    async def execute_trade_signal(signal: Dict):
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Desktop\pocket-option-test\telegram\main.py", line 507, in get_persistent_client
+    # Try to get balance to verify connection
+Exception: Connection failed
 
-[19:44:18.892] 🔔 NEW MESSAGE RECEIVED (ID: 207)
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\pocket-option-test\telegram\main.py", line 537, in execute_trade_signal
+    async def execute_trade_signal(signal: Dict):
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Desktop\pocket-option-test\telegram\main.py", line 507, in get_persistent_client
+    # Try to get balance to verify connection
+Exception: Connection failed
 
-[19:44:18] 📅 Scheduling trade: GBP/JPY OTC BUY in 0.001s
-[19:44:18] ✅ Trade scheduled, timer started
-[19:44:18.898] ⚡ Message processed INSTANTLY
-Pending signals: 2, Upcoming trades: 1
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\pocket-option-test\telegram\main.py", line 537, in execute_trade_signal
+    async def execute_trade_signal(signal: Dict):
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Desktop\pocket-option-test\telegram\main.py", line 507, in get_persistent_client
+    # Try to get balance to verify connection
+Exception: Connection failed
 
-[19:44:18] ⚡ Executing scheduled trade: GBP/JPY OTC BUY
-[19:44:18] Creating event loop for trade execution
-[19:44:18] Running trade execution
+[21:48:19] ✅ Trade execution completed
+[21:48:19] ✅ Trade execution completed
+[21:48:19] ✅ Trade execution completed
+[21:48:19] ✅ Trade execution completed
+🔄 Creating persistent client (first time - takes ~25 seconds)...
+🔑 Using DEMO SSID
+🔌 Connecting to PocketOption...
+✅ Connected successfully!
+💰 Balance: $48927.69 USD
+⚡ Ready for trading!
+🔄 Creating persistent client (first time - takes ~25 seconds)...
+🔑 Using DEMO SSID
+🔌 Connecting to PocketOption...
+✅ Connected successfully!
+💰 Balance: $48927.69 USD
+⚡ Ready for trading!
+🔄 Creating persistent client (first time - takes ~25 seconds)...
+🔑 Using DEMO SSID
+🔌 Connecting to PocketOption...
+✅ Connected successfully!
+💰 Balance: $48928.61 USD
+⚡ Ready for trading!
+🔄 Creating persistent client (first time - takes ~25 seconds)...
+🔑 Using DEMO SSID
+🔌 Connecting to PocketOption...
+✅ Connected successfully!
+💰 Balance: $48928.61 USD
+⚡ Ready for trading!
 
-[19:44:18.920] 📥 Trade signal received: GBP/JPY OTC BUY
-[19:44:18.921] 📍 Mapped asset: GBPJPY_otc
-[19:44:18.922] ⚡ Placing order: GBPJPY_otc BUY $1.00 Step 0
-[19:44:18.922] ✅ Order placed! ID: b7380753-a4f3-4dc1-b03b-bbf87e707c5a
-[19:44:18.922] 🚀 Trade placed successfully! Checking result after trade completes...
-[19:44:49] ✅ Trade execution completed
+[21:59:23.102] 🔔 NEW MESSAGE RECEIVED (ID: 234)
+[21:59:23.103] ⚡ Message processed INSTANTLY
+Pending signals: 9, Upcoming trades: 0
 
-[19:47:41.784] 🔔 NEW MESSAGE RECEIVED (ID: 208)
-[19:47:41.788] ⚡ Message processed INSTANTLY
-Pending signals: 3, Upcoming trades: 0
+[21:59:26.075] 🔔 NEW MESSAGE RECEIVED (ID: 235)
 
-[19:47:44.630] 🔔 NEW MESSAGE RECEIVED (ID: 209)
+[21:59:26] 📅 Scheduling trade: GBP/JPY OTC BUY in 0.001s
+[21:59:26] ✅ Trade scheduled, timer started
+[21:59:26.080] ⚡ Message processed INSTANTLY
+Pending signals: 10, Upcoming trades: 1
 
-[19:47:44] 📅 Scheduling trade: GBP/JPY OTC BUY in 0.001s
-[19:47:44] ✅ Trade scheduled, timer started
-[19:47:44.636] ⚡ Message processed INSTANTLY
-Pending signals: 4, Upcoming trades: 1
+[21:59:26] ⚡ Executing scheduled trade: GBP/JPY OTC BUY
+[21:59:26] Creating event loop for trade execution
+[21:59:26] Running trade execution
 
-[19:47:44] ⚡ Executing scheduled trade: GBP/JPY OTC BUY
-[19:47:44] Creating event loop for trade execution
-[19:47:44] Running trade execution
+[21:59:26.101] 📥 Trade signal received: GBP/JPY OTC BUY
+🔄 Creating persistent client (first time - takes ~25 seconds)...
+🔑 Using DEMO SSID
+🔌 Connecting to PocketOption (taking proper time for quality connection)...
+💰 Fetching balance (ensuring accurate data)...
+⚠️ Balance fetch failed (but connection OK): Not connected to PocketOption
+✅ Connected! Proceeding without balance check
+⚡ Connection established - all future trades will be INSTANT!
+❌ Error: Connection failed
+[21:59:26.126] ❌ Trade execution error: Connection failed
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Desktop\pocket-option-test\telegram\main.py", line 537, in execute_trade_signal
+    await client.disconnect()
+     ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Desktop\pocket-option-test\telegram\main.py", line 507, in get_persistent_client
+    # Wait a moment for connection to stabilize
+Exception: Connection failed
 
-[19:47:44.647] 📥 Trade signal received: GBP/JPY OTC BUY
-[19:47:44.648] 📍 Mapped asset: GBPJPY_otc
+[21:59:26] ✅ Trade execution completed
 
-[19:47:44.649] 📊 1 pending trade(s), using step 1
-[19:47:44.651] ⚡ Placing order: GBPJPY_otc BUY $2.50 Step 1
-[19:47:44.651] ✅ Order placed! ID: 1dbf0e74-939d-435b-86d0-f21ae731aa51
-[19:47:44.651] 🚀 Trade placed successfully! Checking result after trade completes...
-[19:48:14] ✅ Trade execution completed
+============================================================
+🤖 POCKET OPTION TRADING BOT
+============================================================
+Channel: testpob1234
+Account: DEMO
+Initial Amount: $1.0
+Multiplier: 2.5x
+============================================================
+🔌 Connecting to PocketOption...
+💰 Balance: $48928.61 USD
+✅ Connected to PocketOption!
+📁 Using file session
+✅ Connected to: Test
+📊 Found 50 recent messages
+
+⏳ Waiting for signals...
+
+
+🔔 NEW MESSAGE: 📈 Pair: GBP/JPY OTC
+⌛️ time: 1 min
+📥 Signal received: GBP/JPY OTC - 1 min
+
+🔔 NEW MESSAGE: Buy
+🎯 Direction received: BUY
+
+============================================================
+🤖 POCKET OPTION TRADING BOT
+============================================================
+Channel: testpob1234
+Account: DEMO
+Initial Amount: $1.0
+Multiplier: 2.5x
+============================================================
+🔌 Connecting to PocketOption...
+💰 Balance: $48928.61 USD
+✅ Connected to PocketOption!
+📁 Using file session
+✅ Connected to: Test
+📊 Found 50 recent messages
+
+⏳ Waiting for signals...
+
+
+🔔 NEW MESSAGE: 📈 Pair: GBP/JPY OTC
+⌛️ time: 1 min
+📥 Signal received: GBP/JPY OTC - 1 min
+
+🔔 NEW MESSAGE: Buy
+🎯 Direction received: BUY
+
+============================================================
+📊 PLACING TRADE
+============================================================
+Asset: GBPJPY_otc
+Direction: BUY
+Amount: $1.00
+Duration: 1 min
+Martingale Step: 0
+============================================================
+✅ Order placed successfully!
+   Order ID: ce5c2c6f-ffb6-4e99-9a88-ef5c1a6dcfd2
+   Status: active
+   Placed at: 22:03:03
+   Expires at: 22:04:03
+⏳ Waiting for trade ce5c2c6f-ffb6-4e99-9a88-ef5c1a6dcfd2 result (max 90s)...
+✅ Result: WIN | Profit: $0.92
+🎉 WIN! Reset martingale step to 0
+
+🔔 NEW MESSAGE: Sell
+
+🔔 NEW MESSAGE: 📈 Pair: GBP/JPY OTC
+⌛️ time: 1 min
+📥 Signal received: GBP/JPY OTC - 1 min
+
+🔔 NEW MESSAGE: Sell
+🎯 Direction received: SELL
+
+============================================================
+📊 PLACING TRADE
+============================================================
+Asset: GBPJPY_otc
+Direction: SELL
+Amount: $1.00
+Duration: 1 min
+Martingale Step: 0
+============================================================
+✅ Order placed successfully!
+   Order ID: 087ea680-b5a2-4014-967d-35f356969a15
+   Status: active
+   Placed at: 22:04:52
+   Expires at: 22:05:52
+⏳ Waiting for trade 087ea680-b5a2-4014-967d-35f356969a15 result (max 90s)...
+✅ Result: LOSS | Profit: $-1.00
+❌ LOSS! Martingale step increased to 1
+
+🔔 NEW MESSAGE: Buy
+
+============================================================
+🤖 POCKET OPTION TRADING BOT
+============================================================
+Channel: testpob1234
+Account: DEMO
+Initial Amount: $1.0
+Multiplier: 2.5x
+============================================================
+🔌 Connecting to PocketOption...
+
+============================================================
+🤖 POCKET OPTION TRADING BOT
+============================================================
+Channel: testpob1234
+Account: DEMO
+Initial Amount: $1.0
+Multiplier: 2.5x
+============================================================
+🔌 Connecting to PocketOption...
+💰 Balance: $48928.53 USD
+✅ Connected to PocketOption!
+📁 Using file session
+✅ Connected to: Test
+📊 Found 50 recent messages
+
+⏳ Waiting for signals...
+
+💰 Balance: $48928.53 USD
+✅ Connected to PocketOption!
+📁 Using file session
+❌ Telegram connection error: database is locked
+
+🔔 NEW MESSAGE: 📈 Pair: GBP/JPY OTC
+⌛️ time: 1 min
+📥 Signal received: GBP/JPY OTC - 1 min
+
+🔔 NEW MESSAGE: Buy
+🎯 Direction received: BUY
+
+============================================================
+📊 PLACING TRADE
+============================================================
+Asset: GBPJPY_otc
+Direction: BUY
+Amount: $1.00
+Duration: 1 min
+Martingale Step: 0
+============================================================
+✅ Order placed successfully!
+   Order ID: 5f45769a-027e-4246-8268-f99481697033
+   Status: active
+   Placed at: 22:10:50
+   Expires at: 22:11:50
+⏳ Waiting for trade 5f45769a-027e-4246-8268-f99481697033 result (max 90s)...
+✅ Result: LOSS | Profit: $-1.00
+❌ LOSS! Martingale step increased to 1
+💡 Same asset kept: GBP/JPY OTC - waiting for next direction
+
+🔔 NEW MESSAGE: Sell
+🎯 Direction received: SELL
+
+============================================================
+📊 PLACING TRADE
+============================================================
+Asset: GBPJPY_otc
+Direction: SELL
+Amount: $2.50
+Duration: 1 min
+Martingale Step: 1
+============================================================
+✅ Order placed successfully!
+   Order ID: 9d68bd6f-17c1-40ae-92bd-c75dd2de8d2e
+   Status: active
+   Placed at: 22:11:52
+   Expires at: 22:12:52
+⏳ Waiting for trade 9d68bd6f-17c1-40ae-92bd-c75dd2de8d2e result (max 90s)...
+✅ Result: WIN | Profit: $2.30
+🎉 WIN! Reset martingale step to 0
+💡 Ready for new asset signal
+
+🔔 NEW MESSAGE: Buy
+🎯 Direction received: BUY
+
+============================================================
+📊 PLACING TRADE
+============================================================
+Asset: GBPJPY_otc
+Direction: BUY
+Amount: $1.00
+Duration: 1 min
+Martingale Step: 0
+============================================================
+✅ Order placed successfully!
+   Order ID: 92e26485-1679-40f4-a0fc-320784f16103
+   Status: active
+   Placed at: 22:12:54
+   Expires at: 22:13:54
+⏳ Waiting for trade 92e26485-1679-40f4-a0fc-320784f16103 result (max 90s)...
+✅ Result: LOSS | Profit: $-1.00
+❌ LOSS! Martingale step increased to 1
+💡 Same asset kept: GBP/JPY OTC - waiting for next direction
+
+🔔 NEW MESSAGE: 📈 Pair: AUD/USD OTC
+⌛️ time: 1 min
+📥 Signal received: AUD/USD OTC - 1 min
+
+🔔 NEW MESSAGE: Buy
+🎯 Direction received: BUY
+
+============================================================
+📊 PLACING TRADE
+============================================================
+Asset: AUDUSD_otc
+Direction: BUY
+Amount: $2.50
+Duration: 1 min
+Martingale Step: 1
+============================================================
+✅ Order placed successfully!
+   Order ID: 00a8e4cb-e339-4c3c-a71b-dfd91a2d2a75
+   Status: active
+   Placed at: 22:13:58
+   Expires at: 22:14:58
+⏳ Waiting for trade 00a8e4cb-e339-4c3c-a71b-dfd91a2d2a75 result (max 90s)...
+✅ Result: WIN | Profit: $2.30
+🎉 WIN! Reset martingale step to 0
+💡 Ready for new asset signal

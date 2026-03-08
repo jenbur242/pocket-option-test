@@ -27,39 +27,26 @@ load_dotenv()
 API_ID = os.getenv('TELEGRAM_API_ID')
 API_HASH = os.getenv('TELEGRAM_API_HASH')
 PHONE_NUMBER = os.getenv('TELEGRAM_PHONE')
-STRING_SESSION = os.getenv('TELEGRAM_STRING_SESSION')  # For Railway deployment
+STRING_SESSION = os.getenv('TELEGRAM_STRING_SESSION')
 
-# Channel username (without t.me/) - configurable via environment
+# Channel username
 CHANNEL_USERNAME = os.getenv('TELEGRAM_CHANNEL', 'testpob1234')
 
-# Trading configuration - will be set by API or environment variables
+# Trading configuration
 TRADE_AMOUNT = float(os.getenv('TRADE_AMOUNT', '1.0'))
 IS_DEMO = os.getenv('IS_DEMO', 'True').lower() == 'true'
 MULTIPLIER = float(os.getenv('MULTIPLIER', '2.5'))
 
-# Signal storage
-pending_signals = {}
-upcoming_trades = []
-import threading
-
-# Track asset trading state for martingale strategy
-asset_states = {}
-
-# Global martingale step (shared across all assets)
+# Global martingale step
 global_martingale_step = 0
 
-# Track past trades
-past_trades = []  # List of completed trades
+# Track trades
+past_trades = []
 
-# Track recent signals for display
-recent_signals = []  # List of recent signals received
-
-# Persistent client for faster trade execution
+# Persistent client
 persistent_client = None
-client_lock = threading.Lock()
-background_tasks = set()  # Track background result checking tasks
 
-# CSV folder path
+# CSV folder
 CSV_FOLDER = 'trade_results'
 
 def ensure_csv_folder():
@@ -77,10 +64,8 @@ def save_trade_to_csv(trade_data: Dict):
         ensure_csv_folder()
         csv_file = get_csv_filename()
         
-        # Check if file exists to determine if we need headers
         file_exists = os.path.exists(csv_file)
         
-        # CSV headers
         headers = [
             'timestamp', 'date', 'time', 'asset', 'direction', 
             'amount', 'step', 'duration', 'result', 'profit_loss',
@@ -90,11 +75,9 @@ def save_trade_to_csv(trade_data: Dict):
         with open(csv_file, 'a', newline='', encoding='utf-8') as f:
             writer = csv.DictWriter(f, fieldnames=headers)
             
-            # Write headers if new file
             if not file_exists:
                 writer.writeheader()
             
-            # Write trade data
             writer.writerow(trade_data)
         
         print(f"✅ Trade saved to CSV: {csv_file}")
@@ -102,312 +85,99 @@ def save_trade_to_csv(trade_data: Dict):
     except Exception as e:
         print(f"❌ Error saving to CSV: {e}")
 
-def update_trading_config(initial_amount=None, is_demo=None, multiplier=None, martingale_step=None):
-    """Update trading configuration dynamically"""
-    global TRADE_AMOUNT, IS_DEMO, MULTIPLIER, global_martingale_step
-    
-    if initial_amount is not None:
-        TRADE_AMOUNT = initial_amount
-    if is_demo is not None:
-        IS_DEMO = is_demo
-    if multiplier is not None:
-        MULTIPLIER = multiplier
-    if martingale_step is not None:
-        global_martingale_step = martingale_step
-    
-    print(f"✅ Trading config updated:")
-    print(f"   Initial Amount: ${TRADE_AMOUNT}")
-    print(f"   Account Type: {'DEMO' if IS_DEMO else 'REAL'}")
-    print(f"   Multiplier: {MULTIPLIER}x")
-    print(f"   Martingale Step: {global_martingale_step}")
-
-def log_to_file(message: str):
-    """Helper function to log messages with UTF-8 encoding"""
+def log_message(message: str):
+    """Log message to console and file"""
+    print(message)
     try:
         with open('telegram/trading_log.txt', 'a', encoding='utf-8') as f:
-            f.write(message)
-    except Exception as e:
-        print(f"Log error: {e}")
-
-def display_upcoming_trades_loop():
-    """Continuously display upcoming trades"""
-    while True:
-        try:
-            os.system('cls' if os.name == 'nt' else 'clear')
-            
-            print("=" * 90)
-            print("🤖 POCKET OPTION BOT - testpob1234 Channel")
-            print("=" * 90)
-            print(f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | 💰 ${TRADE_AMOUNT} | 🔢 {MULTIPLIER}x | 🎮 {'DEMO' if IS_DEMO else 'REAL'}")
-            print("=" * 90)
-            
-            if not upcoming_trades:
-                print("\n📅 No upcoming trades scheduled")
-                print("\n⏳ Waiting for signals from Telegram channel...")
-            else:
-                print(f"\n📅 UPCOMING TRADES ({len(upcoming_trades)}):")
-                print("-" * 90)
-                print(f"{'#':<3} | {'Time':<8} | {'Asset':<16} | {'Dir':<4} | {'Amount':<9} | {'Step':<4} | {'Result':<12}")
-                print("-" * 90)
-                
-                for i, trade in enumerate(upcoming_trades, 1):
-                    signal = trade['signal']
-                    execution_time = trade['execution_time']
-                    
-                    now = datetime.now(execution_time.tzinfo) if execution_time.tzinfo else datetime.now()
-                    time_remaining = (execution_time - now).total_seconds()
-                    
-                    if time_remaining > 0:
-                        minutes = int(time_remaining // 60)
-                        seconds = int(time_remaining % 60)
-                        time_str = f"{minutes}m {seconds}s"
-                    else:
-                        time_str = "Now"
-                    
-                    # Use global martingale step for all assets
-                    trade_amount = TRADE_AMOUNT * (MULTIPLIER ** global_martingale_step)
-                    
-                    # Get result from past trades if available
-                    result = "⏳ Pending"
-                    for past_trade in reversed(past_trades):
-                        if past_trade['asset'] == signal['pair']:
-                            if past_trade['result'] == 'win':
-                                result = "✅ Win"
-                            elif past_trade['result'] == 'loss':
-                                result = "❌ Loss"
-                            elif past_trade['result'] == 'draw':
-                                result = "🔄 Draw"
-                            elif past_trade['result'] == 'failed':
-                                result = "⚠️ Failed"
-                            elif past_trade['result'] == 'pending':
-                                result = "⏳ Pending"
-                            break
-                    
-                    print(f"{i:<3} | {time_str:<8} | {signal['pair']:<16} | {signal['direction']:<4} | ${trade_amount:<8.2f} | {global_martingale_step:<4} | {result:<12}")
-                
-                print("-" * 90)
-            
-            print("\n" + "=" * 90)
-            print("Press Ctrl+C to stop")
-            print("=" * 90)
-            
-            time.sleep(0.01)  # 10ms
-            
-        except Exception as e:
-            print(f"Display error: {e}")
-            time.sleep(0.01)  # 10ms
-                    
-
-# Pattern 1: Asset and time - handle emoji variations (PRE-COMPILED for speed)
-# Matches: 📈 Pair: AUD/USD OTC\n⌛️ time: 1 min
-ASSET_TIME_PATTERN = re.compile(
-    r'📈\s*Pair:\s*([A-Z]+/[A-Z]+(?:\s+OTC)?)\s*\n?\s*⌛[️]?\s*time:\s*(\d+)\s*min',
-    re.IGNORECASE | re.MULTILINE
-)
-
-# Pattern 2: Direction (Buy or Sell) - exact match (PRE-COMPILED for speed)
-DIRECTION_PATTERN = re.compile(r'^(Buy|Sell)\s*$', re.IGNORECASE | re.MULTILINE)
-
-def process_signal_message(message_text: str, message_time: datetime, is_historical: bool = False):
-    """Process message text to extract trading signals - OPTIMIZED"""
-    global pending_signals, upcoming_trades, recent_signals
-    
-    # Skip all historical messages on startup to prevent multiple old signals from executing
-    if is_historical:
-        return
-    
-    # Use pre-compiled patterns for faster matching
-    asset_time_match = ASSET_TIME_PATTERN.search(message_text)
-    direction_match = DIRECTION_PATTERN.search(message_text)
-    
-    if asset_time_match:
-        pair = asset_time_match.group(1).strip()
-        time_minutes = int(asset_time_match.group(2))
-        
-        signal_key = f"{pair}_{message_time.strftime('%Y%m%d_%H%M%S')}"
-        # Execute immediately when direction comes (no delay)
-        # Make sure trade_time has same timezone as message_time
-        if message_time.tzinfo:
-            trade_time = datetime.now(message_time.tzinfo)
-        else:
-            trade_time = datetime.now()
-        
-        pending_signals[signal_key] = {
-            'pair': pair,
-            'time_minutes': time_minutes,
-            'direction': None,
-            'timestamp': message_time,
-            'message_time': message_time,
-            'trade_time': trade_time,
-            'scheduled': False,
-            'processed_directions': []
-        }
-        
-        # Add to recent signals for display
-        recent_signals.append({
-            'time': message_time.strftime('%H:%M:%S'),
-            'pair': pair,
-            'direction': None,
-            'duration': time_minutes,
-            'scheduled': False
-        })
-    
-    elif direction_match:
-        direction = direction_match.group(1).upper()
-        
-        if pending_signals:
-            # Find the most recent signal (regardless of whether it has direction or is scheduled)
-            recent_signal = None
-            recent_key = None
-            
-            for key, signal in pending_signals.items():
-                if recent_signal is None or signal['timestamp'] > recent_signal['timestamp']:
-                    recent_signal = signal
-                    recent_key = key
-            
-            if recent_signal:
-                # Create a new signal based on the most recent one
-                new_signal_key = f"{recent_signal['pair']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                
-                # Use same timezone as message_time
-                if message_time.tzinfo:
-                    current_time = datetime.now(message_time.tzinfo)
-                else:
-                    current_time = datetime.now()
-                
-                new_signal = {
-                    'pair': recent_signal['pair'],
-                    'time_minutes': recent_signal['time_minutes'],
-                    'direction': direction,
-                    'timestamp': current_time,
-                    'message_time': message_time,
-                    'trade_time': current_time,
-                    'scheduled': False,
-                    'processed_directions': [direction]
-                }
-                
-                # Add to pending signals
-                pending_signals[new_signal_key] = new_signal
-                
-                # Update recent signals display
-                recent_signals.append({
-                    'time': message_time.strftime('%H:%M:%S'),
-                    'pair': recent_signal['pair'],
-                    'direction': direction,
-                    'duration': recent_signal['time_minutes'],
-                    'scheduled': False
-                })
-                
-                # Schedule the trade immediately
-                schedule_trade(new_signal, new_signal_key)
-
-def schedule_trade(signal: Dict, signal_key: str):
-    """Schedule trade for immediate execution"""
-    global upcoming_trades, recent_signals
-    
-    signal['scheduled'] = True
-    
-    # Execute immediately (0.001 second = 1ms delay)
-    delay_seconds = 0.001
-    
-    # Log scheduling
-    log_to_file(f"\n[{datetime.now().strftime('%H:%M:%S')}] 📅 Scheduling trade: {signal['pair']} {signal['direction']} in {delay_seconds}s\n")
-    
-    upcoming_trades.append({
-        'signal': signal,
-        'signal_key': signal_key,
-        'execution_time': datetime.now() + timedelta(seconds=delay_seconds),
-        'delay_seconds': delay_seconds
-    })
-    
-    timer = threading.Timer(delay_seconds, execute_scheduled_trade, args=[signal, signal_key])
-    timer.start()
-    
-    log_to_file(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Trade scheduled, timer started\n")
-    
-    # Update recent signals to show scheduled
-    for sig in recent_signals:
-        if sig['pair'] == signal['pair'] and sig['direction'] == signal['direction']:
-            sig['scheduled'] = True
-            break
-
-def execute_scheduled_trade(signal: Dict, signal_key: str):
-    """Execute scheduled trade"""
-    global upcoming_trades
-    
-    # Log execution start
-    log_to_file(f"\n[{datetime.now().strftime('%H:%M:%S')}] ⚡ Executing scheduled trade: {signal['pair']} {signal['direction']}\n")
-    
-    upcoming_trades = [trade for trade in upcoming_trades if trade['signal_key'] != signal_key]
-    
-    # Create a new event loop for this thread
-    try:
-        log_to_file(f"[{datetime.now().strftime('%H:%M:%S')}] Creating event loop for trade execution\n")
-        
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        log_to_file(f"[{datetime.now().strftime('%H:%M:%S')}] Running trade execution\n")
-        
-        loop.run_until_complete(execute_trade_signal(signal))
-        loop.close()
-        
-        log_to_file(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Trade execution completed\n")
-        
-    except Exception as e:
-        log_to_file(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Error executing trade: {e}\n")
-        import traceback
-        log_to_file(f"{traceback.format_exc()}\n")
-        
-        print(f"\n❌ Error executing trade: {e}")
+            f.write(f"{message}\n")
+    except:
+        pass
 
 def map_asset_name(pair: str) -> str:
     """Map asset pair to Pocket Option format"""
     clean_pair = pair.replace(' ', '').replace('/', '').upper()
     
-    if 'otc' in pair.upper() or clean_pair.endswith('OTC'):
+    if 'OTC' in pair.upper():
         if clean_pair.endswith('OTC'):
             base_name = clean_pair[:-3]
-            result = f"{base_name}_otc"
+            return f"{base_name}_otc"
         else:
-            result = f"{clean_pair}_otc"
-        return result
+            return f"{clean_pair}_otc"
     else:
         return clean_pair
 
-def validate_ssid(ssid: str) -> bool:
-    """Basic SSID validation"""
-    if not ssid:
-        return False
-    if not ssid.startswith('42["auth"'):
-        return False
-    if '"session"' not in ssid or '"isDemo"' not in ssid:
-        return False
-    return True
+async def get_persistent_client():
+    """Get or create persistent client"""
+    global persistent_client
+    
+    if persistent_client and persistent_client.is_connected:
+        return persistent_client
+    
+    # Get SSID
+    if IS_DEMO:
+        ssid = os.getenv('SSID_DEMO') or os.getenv('SSID')
+        if not ssid:
+            raise Exception("SSID_DEMO not found in .env file")
+    else:
+        ssid = os.getenv('SSID_REAL')
+        if not ssid:
+            raise Exception("SSID_REAL not found in .env file")
+    
+    log_message("🔌 Connecting to PocketOption...")
+    
+    client = AsyncPocketOptionClient(
+        ssid=ssid,
+        is_demo=IS_DEMO,
+        persistent_connection=False,
+        auto_reconnect=True,
+        enable_logging=True
+    )
+    
+    connected = await asyncio.wait_for(client.connect(), timeout=30.0)
+    
+    if not connected:
+        raise Exception("Connection failed")
+    
+    await asyncio.sleep(1)
+    
+    try:
+        balance = await asyncio.wait_for(client.get_balance(), timeout=10.0)
+        log_message(f"💰 Balance: ${balance.balance:.2f} {balance.currency}")
+    except Exception as e:
+        log_message(f"⚠️ Balance fetch failed: {e}")
+    
+    log_message("✅ Connected to PocketOption!")
+    
+    persistent_client = client
+    return client
 
-async def check_result_from_client(order_id: str, wait_seconds: int):
-    """Check result using check_win method - simplified and reliable"""
+async def check_trade_result(order_id: str, duration_minutes: int):
+    """Check trade result after completion"""
     global past_trades, global_martingale_step
     
     try:
-        # Get client
         client = await get_persistent_client()
         
-        # Use check_win to wait for result (handles all the complexity internally)
-        log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⏳ Waiting for trade {order_id} result...\n")
+        wait_time = duration_minutes * 60 + 30
         
-        result_data = await client.check_win(order_id, max_wait_time=wait_seconds)
+        log_message(f"⏳ Waiting for trade {order_id} result (max {wait_time}s)...")
         
-        if result_data and result_data.get('completed'):
-            result = result_data.get('result', 'unknown')
-            profit = result_data.get('profit', 0)
+        win_result = await client.check_win(
+            order_id=order_id,
+            max_wait_time=wait_time
+        )
+        
+        if win_result and win_result.get("completed"):
+            result_type = win_result.get("result", "unknown")
+            profit = win_result.get("profit", 0)
             
-            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ Result: {result.upper()} | Profit: ${profit:.2f}\n")
+            log_message(f"✅ Result: {result_type.upper()} | Profit: ${profit:.2f}")
             
             # Update past_trades
             for trade in reversed(past_trades):
                 if trade.get('order_id') == order_id:
-                    trade['result'] = result
+                    trade['result'] = result_type
                     
                     # Save to CSV
                     csv_data = {
@@ -419,7 +189,7 @@ async def check_result_from_client(order_id: str, wait_seconds: int):
                         'amount': trade['amount'],
                         'step': trade['step'],
                         'duration': trade.get('duration', 1),
-                        'result': result,
+                        'result': result_type,
                         'profit_loss': profit,
                         'balance_before': '',
                         'balance_after': '',
@@ -429,504 +199,238 @@ async def check_result_from_client(order_id: str, wait_seconds: int):
                     break
             
             # Update martingale step
-            if result == 'win':
+            if result_type == 'win':
                 global_martingale_step = 0
                 past_trades[:] = [t for t in past_trades if t['result'] == 'pending']
-                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ WIN! Reset step to 0\n")
-            elif result == 'draw':
+                log_message(f"🎉 WIN! Reset martingale step to 0")
+                log_message(f"💡 Ready for new asset signal")
+            elif result_type == 'draw':
                 past_trades[:] = [t for t in past_trades if t.get('order_id') != order_id]
-                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔄 DRAW! Refunded - no change to step {global_martingale_step}\n")
-            elif result == 'loss':
+                log_message(f"🔄 DRAW! No change to step {global_martingale_step}")
+                log_message(f"💡 Same asset kept: {last_signal['asset']}")
+            elif result_type == 'loss':
                 if global_martingale_step < 8:
                     global_martingale_step += 1
-                    log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ LOSS! Step increased to {global_martingale_step}\n")
+                    log_message(f"❌ LOSS! Martingale step increased to {global_martingale_step}")
+                    log_message(f"💡 Same asset kept: {last_signal['asset']} - waiting for next direction")
                 else:
                     global_martingale_step = 0
-                    log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔄 Max steps reached, reset to 0\n")
+                    log_message(f"🔄 Max steps reached, reset to 0")
+                    log_message(f"💡 Same asset kept: {last_signal['asset']}")
         else:
-            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⚠️ Result timeout or not found\n")
+            log_message(f"⚠️ Result timeout for order {order_id}")
             
     except Exception as e:
-        log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ Error: {e}\n")
-        import traceback
-        log_to_file(f"{traceback.format_exc()}\n")
+        log_message(f"❌ Error checking result: {e}")
 
-async def get_persistent_client():
-    """Get or create persistent client - takes time on first connect, then instant"""
-    global persistent_client
+async def place_trade(asset: str, direction: str, duration: int):
+    """Place trade immediately - SIMPLE AND DIRECT"""
+    global past_trades, global_martingale_step
     
-    # Check if client exists and is connected
-    if persistent_client and persistent_client.is_connected:
-        # ⚡ INSTANT reuse - this is the ultra-fast part!
-        return persistent_client
-    
-    # First connection - takes proper time to ensure quality
-    log_to_file("🔄 Creating persistent client (first time - takes ~25 seconds)...\n")
-    
-    # Get appropriate SSID based on mode
-    if IS_DEMO:
-        ssid = os.getenv('SSID_DEMO') or os.getenv('SSID')
-        if not ssid:
-            raise Exception("SSID_DEMO not found - configure in .env file")
-        log_to_file(f"🔑 Using DEMO SSID\n")
-    else:
-        ssid = os.getenv('SSID_REAL')
-        if not ssid:
-            raise Exception("SSID_REAL not found - configure in .env file. Real account requires separate SSID.")
-        log_to_file(f"🔑 Using REAL SSID\n")
-    
-    if not validate_ssid(ssid):
-        raise Exception("Invalid SSID format - get new SSID from PocketOption")
-    
-    client = AsyncPocketOptionClient(
-        ssid=ssid,
-        is_demo=IS_DEMO,
-        persistent_connection=True,  # Keep connection alive
-        auto_reconnect=True,  # Auto-reconnect if disconnected
-        enable_logging=False  # Disable logging for speed
-    )
+    duration_minutes = duration  # Rename for clarity
     
     try:
-        # Take proper time to connect (20 seconds)
-        log_to_file("🔌 Connecting to PocketOption (taking proper time for quality connection)...\n")
-        await asyncio.wait_for(client.connect(), timeout=20.0)
-        
-        # Try to fetch balance but don't fail if it times out
-        log_to_file("💰 Fetching balance (ensuring accurate data)...\n")
-        try:
-            balance = await asyncio.wait_for(client.get_balance(), timeout=15.0)
-            log_to_file(f"✅ Connected! {'DEMO' if IS_DEMO else 'REAL'} Account\n")
-            log_to_file(f"💰 Balance: ${balance.balance:.2f} {balance.currency}\n")
-        except Exception as balance_error:
-            log_to_file(f"⚠️ Balance fetch failed (but connection OK): {balance_error}\n")
-            log_to_file("✅ Connected! Proceeding without balance check\n")
-        
-        log_to_file(f"⚡ Connection established - all future trades will be INSTANT!\n")
-        
-        if not client.is_connected:
-            raise Exception("Connection failed")
-        
-        persistent_client = client
-        return client
-        
-    except asyncio.TimeoutError:
-        log_to_file("❌ Connection timeout - check SSID\n")
-        if client:
-            try:
-                await client.disconnect()
-            except:
-                pass
-        raise Exception("Connection timeout - SSID may be expired")
-        
-    except Exception as e:
-        log_to_file(f"❌ Error: {e}\n")
-        if client:
-            try:
-                await client.disconnect()
-            except:
-                pass
-        raise
-
-async def execute_trade_signal(signal: Dict):
-    """Execute trade on Pocket Option using persistent client"""
-    try:
-        # Log trade signal received
-        log_to_file(f"\n[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 📥 Trade signal received: {signal['pair']} {signal['direction']}\n")
-        
-        # Get persistent client (instant if already connected!)
-        client = await get_persistent_client()
-        asset_name = map_asset_name(signal['pair'])
-        
-        log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 📍 Mapped asset: {asset_name}\n")
-        
-        order_direction = OrderDirection.CALL if signal['direction'] == 'BUY' else OrderDirection.PUT
-        
-        await execute_strategy_trade(client, asset_name, order_direction, signal)
-        
-    except Exception as e:
-        log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ Trade execution error: {e}\n")
-        import traceback
-        log_to_file(f"{traceback.format_exc()}\n")
-        
-        print(f"❌ Trade execution error: {e}")
-        
-        # Try to reconnect on next trade
-        global persistent_client
-        persistent_client = None
-
-async def execute_strategy_trade(client, asset_name: str, order_direction: OrderDirection, signal: Dict):
-    """Execute trade using global martingale strategy - NON-BLOCKING (< 10ms)"""
-    global past_trades, global_martingale_step, background_tasks
-    
-    try:
-        if not client.is_connected:
-            print(f"\n❌ Client not connected for {asset_name}")
-            
-            # Log to file
-            log_to_file(f"\n[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ERROR: Client not connected for {asset_name}\n")
-            
-            # Add failed trade to past trades
-            past_trades.append({
-                'time': datetime.now().strftime('%H:%M:%S'),
-                'asset': asset_name,
-                'direction': signal['direction'],
-                'amount': TRADE_AMOUNT * (MULTIPLIER ** global_martingale_step),
-                'step': global_martingale_step,
-                'result': 'failed'
-            })
-            return
-        
-        # 🔥 MARTINGALE: Only place ONE trade at a time
-        # Don't place new trades if there are pending trades
+        # Check if there are pending trades
         pending_count = sum(1 for trade in past_trades if trade['result'] == 'pending')
         
         if pending_count > 0:
-            log_to_file(f"\n[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⏸️ Skipping trade - {pending_count} pending trade(s) waiting for results\n")
+            log_message(f"⏸️ Skipping trade - {pending_count} pending trade(s)")
             return
         
-        # No pending trades, use current global step
+        # Get client
+        client = await get_persistent_client()
+        
+        # Map asset name
+        asset_name = map_asset_name(asset)
+        
+        # Calculate amount with martingale
         current_step = global_martingale_step
         current_amount = TRADE_AMOUNT * (MULTIPLIER ** current_step)
         
-        timestamp = datetime.now().strftime('%H:%M:%S.%f')[:-3]
+        # Determine direction
+        order_direction = OrderDirection.CALL if direction.upper() == 'BUY' else OrderDirection.PUT
         
-        # Log trade attempt
-        log_to_file(f"[{timestamp}] ⚡ Placing order: {asset_name} {signal['direction']} ${current_amount:.2f} Step {current_step}\n")
+        log_message(f"\n{'='*60}")
+        log_message(f"📊 PLACING TRADE")
+        log_message(f"{'='*60}")
+        log_message(f"Asset: {asset_name}")
+        log_message(f"Direction: {direction.upper()}")
+        log_message(f"Amount: ${current_amount:.2f}")
+        log_message(f"Duration: {duration_minutes} min")
+        log_message(f"Martingale Step: {current_step}")
+        log_message(f"{'='*60}")
         
-        # Place order (this is fast - usually < 1 second)
+        # Place order - EXACT SAME AS test_trade.py
         order_result = await client.place_order(
             asset=asset_name,
-            direction=order_direction,
             amount=current_amount,
-            duration=signal['time_minutes'] * 60
+            direction=order_direction,
+            duration=duration_minutes * 60
         )
         
         if order_result and order_result.status in [OrderStatus.ACTIVE, OrderStatus.PENDING]:
-            # ✅ Order placed successfully
+            log_message(f"✅ Order placed successfully!")
+            log_message(f"   Order ID: {order_result.order_id}")
+            log_message(f"   Status: {order_result.status.value}")
+            log_message(f"   Placed at: {order_result.placed_at.strftime('%H:%M:%S')}")
+            log_message(f"   Expires at: {order_result.expires_at.strftime('%H:%M:%S')}")
             
-            trade_info = {
-                'order_id': order_result.order_id,
-                'amount': current_amount,
-                'step': current_step,  # Use the step this trade was placed with
-                'direction': signal['direction'],
-                'timestamp': timestamp,
-                'duration': signal['time_minutes'],
-                'asset': asset_name
-            }
-            
-            # Store in asset states for tracking
-            if asset_name not in asset_states:
-                asset_states[asset_name] = {'last_trade': None, 'history': []}
-            
-            asset_states[asset_name]['last_trade'] = trade_info
-            asset_states[asset_name]['history'].append(trade_info)
-            
-            # Add to past trades as pending
+            # Add to past trades
             past_trades.append({
-                'time': timestamp,
+                'time': datetime.now().strftime('%H:%M:%S'),
                 'asset': asset_name,
-                'direction': signal['direction'],
+                'direction': direction.upper(),
                 'amount': current_amount,
-                'step': current_step,  # Use the step this trade was placed with
-                'duration': signal['time_minutes'],  # Add duration for CSV export
+                'step': current_step,
+                'duration': duration_minutes,
                 'result': 'pending',
-                'order_id': order_result.order_id  # Store order_id for tracking
+                'order_id': order_result.order_id
             })
             
-            # Log success
-            log_to_file(f"[{timestamp}] ✅ Order placed! ID: {order_result.order_id}\n")
-            log_to_file(f"[{timestamp}] 🚀 Trade placed successfully! Checking result after trade completes...\n")
+            # Check result in background
+            asyncio.create_task(check_trade_result(order_result.order_id, duration_minutes))
             
-            # Schedule result check - check_win will wait for the result
-            wait_time = signal['time_minutes'] * 60 + 10  # Trade duration + 10 seconds buffer
-            asyncio.create_task(check_result_from_client(order_result.order_id, wait_time))
-            
-            # Return immediately - trade is placed!
-            return order_result
-                
         else:
             error_msg = order_result.error_message if order_result and order_result.error_message else 'Unknown error'
-            
-            # Log failure
-            log_to_file(f"[{timestamp}] ❌ Trade failed: {error_msg}\n")
-            
-            # Add failed trade to past trades
-            past_trades.append({
-                'time': timestamp,
-                'asset': asset_name,
-                'direction': signal['direction'],
-                'amount': current_amount,
-                'step': global_martingale_step,
-                'result': 'failed'
-            })
+            log_message(f"❌ Trade failed: {error_msg}")
             
     except Exception as e:
-        timestamp = datetime.now().strftime('%H:%M:%S.%f')[:-3]
-        
-        # Log exception
-        log_to_file(f"[{timestamp}] ❌ Exception in strategy trade: {e}\n")
+        log_message(f"❌ Error placing trade: {e}")
         import traceback
-        log_to_file(f"{traceback.format_exc()}\n")
-        
-        print(f"\n❌ Strategy trade error: {e}")
+        traceback.print_exc()
 
+def parse_signal(message_text: str) -> Dict:
+    """Parse signal from Telegram message - SIMPLE REGEX"""
+    signal = {'asset': None, 'direction': None, 'duration': None}
+    
+    # Pattern: 📈 Pair: AUD/USD OTC
+    asset_match = re.search(r'📈\s*Pair:\s*([A-Z]+/[A-Z]+(?:\s+OTC)?)', message_text, re.IGNORECASE)
+    if asset_match:
+        signal['asset'] = asset_match.group(1).strip()
+    
+    # Pattern: ⌛️ time: 1 min
+    time_match = re.search(r'⌛[️]?\s*time:\s*(\d+)\s*min', message_text, re.IGNORECASE)
+    if time_match:
+        signal['duration'] = int(time_match.group(1))
+    
+    # Pattern: Buy or Sell
+    direction_match = re.search(r'^(Buy|Sell)\s*$', message_text, re.IGNORECASE | re.MULTILINE)
+    if direction_match:
+        signal['direction'] = direction_match.group(1).upper()
+    
+    return signal
 
-# OLD FUNCTION - REPLACED BY WebSocket event listener (handle_trade_result)
-# This function used check_win() which had timeout issues
-# Now we use WebSocket events for instant result updates
-"""
-async def check_trade_result_later(order_id: str, asset_name: str, signal: Dict, amount: float, step: int):
-    # ... old implementation removed ...
-    pass
-"""
+# Store last signal for direction matching - KEEP ASSET UNTIL WIN
+last_signal = {'asset': None, 'duration': None}
 
-async def fetch_channel_messages():
-    """
-    Fetch messages from testpob1234 channel with INSTANT execution
-    Uses event handlers for real-time message processing (< 10ms latency)
-    """
+async def process_message(message_text: str):
+    """Process Telegram message and place trade if complete signal"""
+    global last_signal
     
-    # 🔐 Recreate session file from environment variable if needed (Railway)
-    session_file_base64 = os.getenv('TELEGRAM_SESSION_FILE')
-    session_journal_base64 = os.getenv('TELEGRAM_SESSION_JOURNAL')
+    signal = parse_signal(message_text)
     
-    if session_file_base64:
-        print("🔐 Recreating session file from environment variable...")
-        import base64
+    # If we got asset and duration, store it (update the asset)
+    if signal['asset'] and signal['duration']:
+        last_signal['asset'] = signal['asset']
+        last_signal['duration'] = signal['duration']
+        log_message(f"📥 Signal received: {signal['asset']} - {signal['duration']} min")
+    
+    # If we got direction and have stored asset/duration, place trade
+    if signal['direction'] and last_signal['asset'] and last_signal['duration']:
+        log_message(f"🎯 Direction received: {signal['direction']}")
         
-        # Recreate main session file
-        session_data = base64.b64decode(session_file_base64)
-        with open('session_testpob1234.session', 'wb') as f:
-            f.write(session_data)
-        print("✅ Session file recreated")
+        # Place trade immediately
+        await place_trade(
+            asset=last_signal['asset'],
+            direction=signal['direction'],
+            duration=last_signal['duration']
+        )
         
-        # Recreate journal file if available
-        if session_journal_base64:
-            journal_data = base64.b64decode(session_journal_base64)
-            with open('session_testpob1234.session-journal', 'wb') as f:
-                f.write(journal_data)
-            print("✅ Session journal file recreated")
+        # DON'T clear last signal - keep it for martingale on same asset
+        # It will only be replaced when a new asset signal comes
+
+async def main():
+    """Main function - Listen to Telegram and place trades"""
     
-    # ⚡ PRE-CONNECT to PocketOption (takes proper time for quality)
-    print("🔄 Pre-connecting to PocketOption...")
-    print("⏳ This takes ~25 seconds (connect + balance fetch)")
-    print("💡 But all trades after this will be INSTANT!")
+    # Pre-connect to PocketOption
+    log_message("\n" + "="*60)
+    log_message("🤖 POCKET OPTION TRADING BOT")
+    log_message("="*60)
+    log_message(f"Channel: {CHANNEL_USERNAME}")
+    log_message(f"Account: {'DEMO' if IS_DEMO else 'REAL'}")
+    log_message(f"Initial Amount: ${TRADE_AMOUNT}")
+    log_message(f"Multiplier: {MULTIPLIER}x")
+    log_message("="*60)
+    
     try:
         await get_persistent_client()
-        print("✅ Pre-connected successfully!")
-        print("💰 Balance fetched and verified")
-        print("⚡ Ready for INSTANT trade execution!")
     except Exception as e:
-        print(f"⚠️ Pre-connect failed: {e}")
-        print("Will connect on first trade (takes ~25s)")
-        print("All subsequent trades will be instant")
+        log_message(f"❌ Failed to connect to PocketOption: {e}")
+        return
     
-    # Use unique session for this bot
-    # Priority: 1. String session, 2. File session (recreated or local)
+    # Connect to Telegram
     if STRING_SESSION:
-        print("🔐 Using string session (Railway deployment)")
+        log_message("🔐 Using string session")
         client = TelegramClient(StringSession(STRING_SESSION), API_ID, API_HASH)
     else:
-        print("📁 Using file session (local or recreated from env)")
+        log_message("📁 Using file session")
         client = TelegramClient('session_testpob1234', API_ID, API_HASH)
     
     try:
         await client.start(PHONE_NUMBER)
     except Exception as e:
-        error_msg = str(e).lower()
-        
-        # Check for database lock error
-        if 'database is locked' in error_msg or 'database' in error_msg:
-            print(f"\n❌ Database lock error detected: {e}")
-            print("🔄 Automatically cleaning up session files...")
-            
-            # Close client if open
-            try:
-                await client.disconnect()
-            except:
-                pass
-            
-            # Delete session files
-            session_files = [
-                'session_testpob1234.session',
-                'session_testpob1234.session-journal'
-            ]
-            
-            deleted_count = 0
-            for session_file in session_files:
-                if os.path.exists(session_file):
-                    try:
-                        os.remove(session_file)
-                        deleted_count += 1
-                        print(f"✓ Deleted {session_file}")
-                    except Exception as del_error:
-                        print(f"⚠️ Could not delete {session_file}: {del_error}")
-            
-            if deleted_count > 0:
-                print(f"\n✅ Cleaned up {deleted_count} session file(s)")
-                print("💡 Please restart the bot. You will need to verify OTP again.")
-            else:
-                print("\n⚠️ No session files found to delete")
-            
-            return
-        else:
-            # Other error
-            print(f"\n❌ Telegram connection error: {e}")
-            return
-    
-    try:
-        try:
-            channel = await client.get_entity(CHANNEL_USERNAME)
-        except Exception as e:
-            print(f"\n❌ Error finding channel: {e}")
-            print(f"💡 Make sure you're a member of t.me/{CHANNEL_USERNAME}")
-            return
-        
-        # Get messages from last 30 minutes
-        recent_time = datetime.now() - timedelta(minutes=30)
-        
-        messages = await client(GetHistoryRequest(
-            peer=channel,
-            limit=50,
-            offset_date=recent_time,
-            offset_id=0,
-            max_id=0,
-            min_id=0,
-            add_offset=0,
-            hash=0
-        ))
-        
-        # Process initial messages silently (mark as historical to skip execution)
-        processed_count = 0
-        for message in reversed(messages.messages):
-            if message.message:
-                process_signal_message(message.message, message.date, is_historical=True)
-                processed_count += 1
-        
-        # Log startup info to a file so it doesn't interfere with display
-        with open('telegram/trading_log.txt', 'w', encoding='utf-8') as f:
-            f.write(f"Bot started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Connected to: {channel.title}\n")
-            f.write(f"Pre-connected to PocketOption: Ready for instant trades!\n")
-            f.write(f"Processed {processed_count} historical messages (skipped for execution)\n")
-            f.write(f"⏳ Waiting for new signals...\n")
-            f.write(f"\nNote: Only NEW messages received after bot startup will be executed.\n")
-            f.write(f"This prevents multiple old signals from executing simultaneously.\n")
-            f.write(f"\n🔔 INSTANT EXECUTION MODE: Using real-time event handlers\n")
-            f.write(f"Messages will execute within < 10ms of arrival\n")
-            f.write(f"⚡ ULTRA-FAST MODE: Pre-connected for instant first trade\n")
-        
-        last_message_id = messages.messages[0].id if messages.messages else 0
-        
-        # Register event handler for NEW messages (INSTANT - no polling delay)
-        @client.on(events.NewMessage(chats=channel))
-        async def handle_new_message(event):
-            nonlocal last_message_id
-            
-            if event.message.id > last_message_id:
-                last_message_id = event.message.id
-                
-                # Process immediately (< 1ms)
-                log_to_file(f"\n[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔔 NEW MESSAGE RECEIVED (ID: {event.message.id})\n")
-                process_signal_message(event.message.message, event.message.date, is_historical=False)
-                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⚡ Message processed INSTANTLY\n")
-                log_to_file(f"Pending signals: {len(pending_signals)}, Upcoming trades: {len(upcoming_trades)}\n")
-        
-        print(f"\n✅ Connected to: {channel.title}")
-        print(f"📊 Processed {processed_count} historical messages (skipped for execution)")
-        print(f"\n⚡ ULTRA-FAST MODE ACTIVE")
-        print(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        print(f"🔌 SSID Connection: ✅ Established (~25s, ONE TIME)")
-        print(f"💰 Balance Fetch: ✅ Complete (~10s, ONE TIME)")
-        print(f"⚡ Message Reading: < 1ms (INSTANT)")
-        print(f"⚡ Trade Placement: < 500ms (INSTANT)")
-        print(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        print(f"🎯 Setup complete - all trades will be INSTANT!")
-        print(f"⏳ Waiting for signals...\n")
-        
-        log_to_file("\n🔔 Real-time event handler registered - INSTANT execution mode active\n")
-        
-        # Keep connection alive (events handle messages automatically)
-        while True:
-            try:
-                # Just keep alive, no polling needed (events handle messages instantly)
-                await asyncio.sleep(1)  # Check every 1 second for connection health only
-                
-            except Exception as e:
-                log_to_file(f"Error in keep-alive loop: {e}\n")
-                await asyncio.sleep(0.1)
-        
-    except Exception as e:
-        print(f"\n❌ Error: {e}")
-    finally:
-        # Properly disconnect and cleanup
-        try:
-            if client.is_connected():
-                await client.disconnect()
-        except Exception as cleanup_error:
-            # Silently ignore cleanup errors (event loop may be closed)
-            pass
-
-async def cleanup_shared_client():
-    """Cleanup function (no longer needed with independent clients)"""
-    log_to_file("👋 Bot shutting down\n")
-
-def get_user_config():
-    """Get user configuration from environment variables"""
-    global TRADE_AMOUNT, IS_DEMO, MULTIPLIER
-    
-    # Check for appropriate SSID based on mode
-    is_demo = os.getenv('IS_DEMO', 'True').lower() == 'true'
-    if is_demo:
-        ssid = os.getenv('SSID_DEMO') or os.getenv('SSID')
-        if not ssid:
-            print("❌ SSID_DEMO not found in .env file")
-            return False
-    else:
-        ssid = os.getenv('SSID_REAL')
-        if not ssid:
-            print("❌ SSID_REAL not found in .env file. Real account requires separate SSID.")
-            return False
-    
-    api_id = os.getenv('TELEGRAM_API_ID')
-    if not api_id:
-        print("❌ TELEGRAM_API_ID not found")
-        return False
-    
-    api_hash = os.getenv('TELEGRAM_API_HASH')
-    if not api_hash:
-        print("❌ TELEGRAM_API_HASH not found")
-        return False
-    
-    phone = os.getenv('TELEGRAM_PHONE')
-    if not phone:
-        print("❌ TELEGRAM_PHONE not found")
-        return False
-    
-    # Load configuration from environment variables
-    TRADE_AMOUNT = float(os.getenv('TRADE_AMOUNT', '1.0'))
-    IS_DEMO = os.getenv('IS_DEMO', 'True').lower() == 'true'
-    MULTIPLIER = float(os.getenv('MULTIPLIER', '2.5'))
-    
-    return True
-
-def main():
-    """Main function"""
-    if not get_user_config():
+        log_message(f"❌ Telegram connection error: {e}")
         return
     
-    # Enable display thread
-    display_thread = threading.Thread(target=display_upcoming_trades_loop, daemon=True)
-    display_thread.start()
-    
     try:
-        asyncio.run(fetch_channel_messages())
-    except KeyboardInterrupt:
-        print("\n\n👋 Shutting down...")
-        asyncio.run(cleanup_shared_client())
+        channel = await client.get_entity(CHANNEL_USERNAME)
+        log_message(f"✅ Connected to: {channel.title}")
     except Exception as e:
-        print(f"\n\n❌ Error: {e}")
-        asyncio.run(cleanup_shared_client())
+        log_message(f"❌ Error finding channel: {e}")
+        return
+    
+    # Get recent messages (don't execute, just for context)
+    recent_time = datetime.now() - timedelta(minutes=30)
+    messages = await client(GetHistoryRequest(
+        peer=channel,
+        limit=50,
+        offset_date=recent_time,
+        offset_id=0,
+        max_id=0,
+        min_id=0,
+        add_offset=0,
+        hash=0
+    ))
+    
+    log_message(f"📊 Found {len(messages.messages)} recent messages")
+    
+    last_message_id = messages.messages[0].id if messages.messages else 0
+    
+    # Listen for NEW messages
+    @client.on(events.NewMessage(chats=channel))
+    async def handle_new_message(event):
+        nonlocal last_message_id
+        
+        if event.message.id > last_message_id:
+            last_message_id = event.message.id
+            
+            log_message(f"\n🔔 NEW MESSAGE: {event.message.message[:100]}")
+            
+            # Process message and place trade if signal is complete
+            await process_message(event.message.message)
+    
+    log_message("\n⏳ Waiting for signals...\n")
+    
+    # Keep alive
+    while True:
+        await asyncio.sleep(1)
 
 if __name__ == "__main__":
-    main()
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n\n👋 Shutting down...")
+    except Exception as e:
+        print(f"\n\n❌ Error: {e}")
+        import traceback
+        traceback.print_exc()

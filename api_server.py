@@ -18,15 +18,16 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Import trading modules
 from telegram.main import (
-    fetch_channel_messages,
+    main as telegram_main,
     past_trades,
-    upcoming_trades,
     global_martingale_step,
     TRADE_AMOUNT,
     IS_DEMO,
-    MULTIPLIER,
-    update_trading_config
+    MULTIPLIER
 )
+
+# upcoming_trades removed from simplified main.py
+upcoming_trades = []
 
 # Load environment variables
 load_dotenv()
@@ -936,7 +937,7 @@ def get_trading_status():
                 'multiplier': MULTIPLIER,
                 'global_step': global_martingale_step
             },
-            'upcoming_trades': len(upcoming_trades),
+            'upcoming_trades': 0,  # Simplified version doesn't schedule trades
             'past_trades': len(past_trades)
         })
     
@@ -946,47 +947,72 @@ def get_trading_status():
 @app.route('/api/trades/results', methods=['GET'])
 def get_trade_results():
     """
-    Get trade results with pagination
+    Get trade results with pagination and proper data structure
     Query params: ?limit=50&offset=0
     """
     try:
         limit = int(request.args.get('limit', 50))
         offset = int(request.args.get('offset', 0))
         
-        # Get trades from past_trades
+        # Get trades from past_trades (imported from telegram.main)
         total = len(past_trades)
-        trades = past_trades[offset:offset + limit]
+        
+        # Get paginated trades
+        trades_slice = past_trades[offset:offset + limit]
+        
+        # Format trades for API response
+        formatted_trades = []
+        for trade in trades_slice:
+            formatted_trade = {
+                'time': trade.get('time', ''),
+                'asset': trade.get('asset', ''),
+                'direction': trade.get('direction', ''),
+                'amount': trade.get('amount', 0),
+                'step': trade.get('step', 0),
+                'duration': trade.get('duration', 1),
+                'result': trade.get('result', 'pending'),
+                'order_id': trade.get('order_id', ''),
+                'profit': 0  # Will be calculated from result
+            }
+            
+            # Calculate profit based on result
+            result = trade.get('result', 'pending')
+            amount = trade.get('amount', 0)
+            
+            if result == 'win':
+                # Assuming 80% payout (adjust based on actual payout)
+                formatted_trade['profit'] = round(amount * 0.8, 2)
+            elif result == 'loss':
+                formatted_trade['profit'] = round(-amount, 2)
+            elif result == 'draw':
+                formatted_trade['profit'] = 0
+            else:  # pending or failed
+                formatted_trade['profit'] = 0
+            
+            formatted_trades.append(formatted_trade)
         
         return jsonify({
             'total': total,
             'limit': limit,
             'offset': offset,
-            'trades': trades
+            'trades': formatted_trades
         })
     
     except Exception as e:
+        print(f"❌ Error getting trade results: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/trades/upcoming', methods=['GET'])
 def get_upcoming_trades():
-    """Get upcoming scheduled trades"""
+    """Get upcoming scheduled trades (empty in simplified version)"""
     try:
-        trades_data = []
-        for trade in upcoming_trades:
-            signal = trade['signal']
-            execution_time = trade['execution_time']
-            
-            trades_data.append({
-                'asset': signal['pair'],
-                'direction': signal['direction'],
-                'duration': signal['time_minutes'],
-                'execution_time': execution_time.isoformat(),
-                'amount': TRADE_AMOUNT * (MULTIPLIER ** global_martingale_step)
-            })
-        
+        # Simplified main.py doesn't have upcoming_trades scheduling
+        # Return empty list for API compatibility
         return jsonify({
-            'total': len(trades_data),
-            'trades': trades_data
+            'total': 0,
+            'trades': []
         })
     
     except Exception as e:
@@ -994,36 +1020,39 @@ def get_upcoming_trades():
 
 @app.route('/api/trades/analysis', methods=['GET'])
 def get_trade_analysis():
-    """Get trade analysis and statistics"""
+    """Get trade analysis and statistics with proper result tracking"""
     try:
         if not past_trades:
             return jsonify({
                 'total_trades': 0,
+                'completed_trades': 0,
                 'wins': 0,
                 'losses': 0,
-                'closed': 0,
+                'draws': 0,
                 'pending': 0,
                 'failed': 0,
                 'win_rate': 0,
                 'total_profit': 0,
-                'current_step': global_martingale_step
+                'current_step': global_martingale_step,
+                'current_trade_amount': TRADE_AMOUNT * (MULTIPLIER ** global_martingale_step)
             })
         
-        # Count all result types (using correct status names from models.py)
+        # Count all result types
         wins = sum(1 for t in past_trades if t.get('result') == 'win')
         losses = sum(1 for t in past_trades if t.get('result') == 'loss')
-        closed = sum(1 for t in past_trades if t.get('result') == 'closed')
+        draws = sum(1 for t in past_trades if t.get('result') == 'draw')
         pending = sum(1 for t in past_trades if t.get('result') == 'pending')
         failed = sum(1 for t in past_trades if t.get('result') == 'failed')
         
         # Total completed trades (exclude pending and failed)
-        completed = wins + losses + closed
+        completed = wins + losses + draws
         total = len(past_trades)
         
-        # Win rate based on completed trades only
-        win_rate = (wins / completed * 100) if completed > 0 else 0
+        # Win rate based on completed trades only (exclude draws)
+        win_loss_total = wins + losses
+        win_rate = (wins / win_loss_total * 100) if win_loss_total > 0 else 0
         
-        # Calculate profit (simplified)
+        # Calculate profit
         total_profit = 0
         for trade in past_trades:
             result = trade.get('result')
@@ -1034,8 +1063,8 @@ def get_trade_analysis():
                 total_profit += amount * 0.8
             elif result == 'loss':
                 total_profit -= amount
-            elif result == 'closed':
-                # Closed/cancelled returns the stake
+            elif result == 'draw':
+                # Draw returns the stake (no profit/loss)
                 total_profit += 0
             # Pending and failed don't affect profit yet
         
@@ -1044,15 +1073,19 @@ def get_trade_analysis():
             'completed_trades': completed,
             'wins': wins,
             'losses': losses,
-            'closed': closed,
+            'draws': draws,
             'pending': pending,
             'failed': failed,
             'win_rate': round(win_rate, 2),
             'total_profit': round(total_profit, 2),
-            'current_step': global_martingale_step
+            'current_step': global_martingale_step,
+            'current_trade_amount': round(TRADE_AMOUNT * (MULTIPLIER ** global_martingale_step), 2)
         })
     
     except Exception as e:
+        print(f"❌ Error in trade analysis: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/balance', methods=['GET'])
@@ -1182,14 +1215,15 @@ def run_trading_bot(initial_amount, is_demo, multiplier, martingale_step):
     
     loop = None
     try:
-        # Update trading configuration in telegram.main module
-        import telegram.main as trading_module
-        trading_module.update_trading_config(
-            initial_amount=initial_amount,
-            is_demo=is_demo,
-            multiplier=multiplier,
-            martingale_step=martingale_step
-        )
+        # Update trading configuration by setting environment variables
+        env_path = os.path.join(os.path.dirname(__file__), '.env')
+        set_key(env_path, 'TRADE_AMOUNT', str(initial_amount))
+        set_key(env_path, 'IS_DEMO', str(is_demo))
+        set_key(env_path, 'MULTIPLIER', str(multiplier))
+        set_key(env_path, 'MARTINGALE_STEP', str(martingale_step))
+        
+        # Reload environment
+        load_dotenv(override=True)
         
         print(f"🚀 Starting trading bot with config:")
         print(f"   Initial Amount: ${initial_amount}")
@@ -1202,8 +1236,8 @@ def run_trading_bot(initial_amount, is_demo, multiplier, martingale_step):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         
-        # Run trading bot
-        loop.run_until_complete(fetch_channel_messages())
+        # Run trading bot main function
+        loop.run_until_complete(telegram_main())
     
     except Exception as e:
         error_msg = str(e).lower()
