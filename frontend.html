@@ -669,6 +669,93 @@
                         </div>
                     </div>
                     
+                    <!-- Configuration Overview Panel -->
+                    <div class="mt-8">
+                        <div class="glass-card rounded-2xl p-8">
+                            <h4 class="text-lg font-bold flex items-center gap-2 mb-6">
+                                <span class="material-symbols-outlined text-primary">settings</span>
+                                Current Configuration (.env)
+                            </h4>
+                            
+                            <div class="space-y-4">
+                                <!-- SSID Configuration -->
+                                <div class="p-4 bg-slate-800/50 rounded-xl border border-border-muted">
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <span class="material-symbols-outlined text-xs text-primary">key</span>
+                                        <h5 class="font-bold text-sm">SSID Configuration</h5>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between items-start">
+                                            <span class="text-xs text-slate-400">Demo SSID:</span>
+                                            <span class="text-xs text-slate-300 font-mono text-right max-w-md truncate" id="envSsidDemo">Loading...</span>
+                                        </div>
+                                        <div class="flex justify-between items-start">
+                                            <span class="text-xs text-slate-400">Real SSID:</span>
+                                            <span class="text-xs text-slate-300 font-mono text-right max-w-md truncate" id="envSsidReal">Loading...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Telegram Configuration -->
+                                <div class="p-4 bg-slate-800/50 rounded-xl border border-border-muted">
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <span class="material-symbols-outlined text-xs text-primary">send</span>
+                                        <h5 class="font-bold text-sm">Telegram Configuration</h5>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between">
+                                            <span class="text-xs text-slate-400">API ID:</span>
+                                            <span class="text-xs text-slate-300 font-mono" id="envTelegramApiId">Loading...</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-xs text-slate-400">API Hash:</span>
+                                            <span class="text-xs text-slate-300 font-mono" id="envTelegramApiHash">Loading...</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-xs text-slate-400">Phone:</span>
+                                            <span class="text-xs text-slate-300 font-mono" id="envTelegramPhone">Loading...</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-xs text-slate-400">Channel:</span>
+                                            <span class="text-xs text-slate-300 font-mono" id="envTelegramChannel">Loading...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Trading Configuration -->
+                                <div class="p-4 bg-slate-800/50 rounded-xl border border-border-muted">
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <span class="material-symbols-outlined text-xs text-primary">tune</span>
+                                        <h5 class="font-bold text-sm">Trading Configuration</h5>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between">
+                                            <span class="text-xs text-slate-400">Trade Amount:</span>
+                                            <span class="text-xs text-slate-300 font-mono" id="envTradeAmount">Loading...</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-xs text-slate-400">Account Mode:</span>
+                                            <span class="text-xs text-slate-300 font-mono" id="envIsDemo">Loading...</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-xs text-slate-400">Multiplier:</span>
+                                            <span class="text-xs text-slate-300 font-mono" id="envMultiplier">Loading...</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-xs text-slate-400">Martingale Step:</span>
+                                            <span class="text-xs text-slate-300 font-mono" id="envMartingaleStep">Loading...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button onclick="loadConfig()" class="w-full mt-4 bg-primary/10 hover:bg-primary/20 text-primary font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all border border-primary/30">
+                                <span class="material-symbols-outlined">refresh</span>
+                                Reload Configuration
+                            </button>
+                        </div>
+                    </div>
+                    
                     <!-- Clear All Sessions Section -->
                     <div class="mt-8">
                         <div class="glass-card rounded-2xl p-8 border-2 border-danger/20">
@@ -1160,21 +1247,48 @@
                 const data = await response.json();
                 
                 if (response.ok) {
+                    // Update configuration overview panel
+                    document.getElementById('envSsidDemo').textContent = data.ssid_demo_preview || '❌ Not configured';
+                    document.getElementById('envSsidReal').textContent = data.ssid_real_preview || '❌ Not configured';
+                    
+                    document.getElementById('envTelegramApiId').textContent = data.telegram.api_id || '❌ Not configured';
+                    document.getElementById('envTelegramApiHash').textContent = data.telegram.api_hash || '❌ Not configured';
+                    document.getElementById('envTelegramPhone').textContent = data.telegram.phone || '❌ Not configured';
+                    document.getElementById('envTelegramChannel').textContent = data.telegram.channel || 'testpob1234';
+                    
+                    // Get trading config from form (since it's not in API response)
+                    document.getElementById('envTradeAmount').textContent = '$' + document.getElementById('initialAmount').value;
+                    document.getElementById('envIsDemo').textContent = document.getElementById('accountType').value === 'true' ? 'DEMO' : 'REAL';
+                    document.getElementById('envMultiplier').textContent = document.getElementById('multiplier').value + 'x';
+                    document.getElementById('envMartingaleStep').textContent = document.getElementById('martingaleStep').value;
+                    
                     // Auto-load SSIDs if configured
                     if (data.ssid_demo_configured || data.ssid_real_configured) {
                         document.getElementById('ssidForm').classList.add('hidden');
                         document.getElementById('ssidConfigured').classList.remove('hidden');
                         
-                        // Update SSID displays
-                        document.getElementById('configuredSsidDemo').textContent = data.ssid_demo_preview || 'Not configured';
-                        document.getElementById('configuredSsidReal').textContent = data.ssid_real_preview || 'Not configured';
+                        // Update SSID displays with full preview
+                        const demoDisplay = document.getElementById('configuredSsidDemo');
+                        const realDisplay = document.getElementById('configuredSsidReal');
                         
-                        // Log SSID loaded
-                        if (data.ssid_demo_configured) {
-                            addLog('🔑 Demo SSID loaded from .env - Ready to connect', 'success');
+                        if (data.ssid_demo_configured && data.ssid_demo_preview) {
+                            demoDisplay.textContent = data.ssid_demo_preview;
+                            demoDisplay.classList.remove('text-slate-500');
+                            demoDisplay.classList.add('text-slate-300');
+                            addLog('🔑 Demo SSID loaded from .env', 'success');
+                        } else {
+                            demoDisplay.textContent = '❌ Not configured';
+                            demoDisplay.classList.add('text-slate-500');
                         }
-                        if (data.ssid_real_configured) {
-                            addLog('🔑 Real SSID loaded from .env - Ready to connect', 'success');
+                        
+                        if (data.ssid_real_configured && data.ssid_real_preview) {
+                            realDisplay.textContent = data.ssid_real_preview;
+                            realDisplay.classList.remove('text-slate-500');
+                            realDisplay.classList.add('text-slate-300');
+                            addLog('🔑 Real SSID loaded from .env', 'success');
+                        } else {
+                            realDisplay.textContent = '❌ Not configured (optional)';
+                            realDisplay.classList.add('text-slate-500');
                         }
                         
                         // Auto-connect to PocketOption in background
@@ -1186,6 +1300,7 @@
                         addLog('⚠️ SSIDs not configured - Please add SSIDs in Configuration', 'warning');
                     }
                     
+                    // Load Telegram configuration
                     const sessionResponse = await fetch(`${API_BASE}/telegram/check-session`);
                     const sessionData = await sessionResponse.json();
                     
