@@ -637,26 +637,39 @@ async def check_trade_result_later(order_id: str, asset_name: str, signal: Dict,
             log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔍 Result data: {result_data}\n")
             
             if result_data and result_data.get('completed'):
-                result = result_data.get('result', 'loss')  # 'win', 'loss', or 'draw'
+                # Map result to our internal status
+                api_result = result_data.get('result', 'loss')  # 'win', 'loss', or 'draw'
                 profit = result_data.get('profit', 0)
+                
+                # Map API result to our status
+                # 'win' -> 'win'
+                # 'loss' -> 'loss'  
+                # 'draw' -> 'closed' (for cancelled/closed trades)
+                if api_result == 'win':
+                    result = 'win'
+                elif api_result == 'loss':
+                    result = 'loss'
+                else:
+                    # 'draw' means closed/cancelled - treat as closed
+                    result = 'closed'
                 
                 # Log result
                 log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] Result: {result.upper()} | Profit: ${profit:.2f}\n")
             elif result_data and result_data.get('timeout'):
                 # Timeout - result not received
-                result = 'unknown'
+                result = 'pending'
                 profit = 0
-                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⏰ Timeout waiting for result - marking as unknown\n")
+                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⏰ Timeout waiting for result - keeping as pending\n")
             else:
                 # Couldn't get result
-                result = 'unknown'
+                result = 'pending'
                 profit = 0
-                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] Could not verify result - marking as unknown\n")
+                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] Could not verify result - keeping as pending\n")
         except Exception as e:
-            # Error checking result
-            result = 'unknown'
+            # Error checking result - keep as pending
+            result = 'pending'
             profit = 0
-            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] Error checking result: {e} - marking as unknown\n")
+            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] Error checking result: {e} - keeping as pending\n")
             import traceback
             log_to_file(f"{traceback.format_exc()}\n")
         
@@ -690,7 +703,7 @@ async def check_trade_result_later(order_id: str, asset_name: str, signal: Dict,
             # Clear only COMPLETED trades, keep pending ones
             global_martingale_step = 0
             
-            # Remove only completed trades (win/loss), keep pending
+            # Remove only completed trades (win/loss/closed), keep pending
             past_trades[:] = [t for t in past_trades if t['result'] == 'pending']
             
             log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ WIN! Reset global step to 0 (kept {len(past_trades)} pending trades)\n")
@@ -704,18 +717,18 @@ async def check_trade_result_later(order_id: str, asset_name: str, signal: Dict,
                 # Max steps reached, reset
                 global_martingale_step = 0
                 log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔄 Max steps (8) reached, reset to 0\n")
-        elif result == 'draw':
-            # DRAW: Keep current step (no change)
-            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⚖️ DRAW! Keeping current step: {global_martingale_step}\n")
-        else:
-            # UNKNOWN: Treat as loss for safety
+        elif result == 'closed':
+            # CLOSED/CANCELLED: Treat as loss for martingale
             if global_martingale_step < 8:
                 global_martingale_step += 1
                 next_amount = TRADE_AMOUNT * (MULTIPLIER ** global_martingale_step)
-                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❓ UNKNOWN result! Treating as loss, step increased to {global_martingale_step}\n")
+                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⚪ CLOSED! Treating as loss, step increased to {global_martingale_step}\n")
             else:
                 global_martingale_step = 0
                 log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔄 Max steps (8) reached, reset to 0\n")
+        else:
+            # PENDING/FAILED: Don't change step yet
+            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⏳ Result: {result.upper()} - keeping current step: {global_martingale_step}\n")
     
     except Exception as e:
         log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ Error in background result checker: {e}\n")

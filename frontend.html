@@ -2094,10 +2094,30 @@
                 
                 if (data.trades && data.trades.length > 0) {
                     tbody.innerHTML = data.trades.map(trade => {
-                        const isWin = trade.result === 'win';
-                        const statusColor = isWin ? 'text-success' : 'text-danger';
-                        const statusBg = isWin ? 'bg-success/10' : 'bg-danger/10';
-                        const statusIcon = isWin ? 'check_circle' : 'cancel';
+                        const result = trade.result || 'pending';
+                        const isWin = result === 'win';
+                        const isLoss = result === 'loss';
+                        const isClosed = result === 'closed';
+                        
+                        // Status colors and icons
+                        let statusColor, statusBg, statusIcon;
+                        if (isWin) {
+                            statusColor = 'text-success';
+                            statusBg = 'bg-success/10';
+                            statusIcon = 'check_circle';
+                        } else if (isLoss) {
+                            statusColor = 'text-danger';
+                            statusBg = 'bg-danger/10';
+                            statusIcon = 'cancel';
+                        } else if (isClosed) {
+                            statusColor = 'text-warning';
+                            statusBg = 'bg-warning/10';
+                            statusIcon = 'block';
+                        } else {
+                            statusColor = 'text-slate-400';
+                            statusBg = 'bg-slate-400/10';
+                            statusIcon = 'schedule';
+                        }
                         const directionColor = trade.direction === 'call' ? 'text-success' : 'text-danger';
                         const directionBg = trade.direction === 'call' ? 'bg-success/10' : 'bg-danger/10';
                         
@@ -2115,11 +2135,11 @@
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-2">
                                         <span class="material-symbols-outlined text-xs ${statusColor}">${statusIcon}</span>
-                                        <span class="text-xs font-medium ${statusColor}">${trade.result.toUpperCase()}</span>
+                                        <span class="text-xs font-medium ${statusColor}">${result.toUpperCase()}</span>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 text-right font-bold ${statusColor}">
-                                    ${isWin ? '+' : ''}$${(trade.amount * (isWin ? 0.92 : -1)).toFixed(2)}
+                                <td class="px-6 py-4 text-right font-bold ${isWin ? 'text-success' : isLoss ? 'text-danger' : 'text-slate-400'}">
+                                    ${isWin ? '+$' + (trade.amount * 0.92).toFixed(2) : isLoss ? '-$' + trade.amount.toFixed(2) : '$0.00'}
                                 </td>
                             </tr>
                         `;

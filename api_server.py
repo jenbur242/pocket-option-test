@@ -1001,7 +1001,7 @@ def get_trade_analysis():
                 'total_trades': 0,
                 'wins': 0,
                 'losses': 0,
-                'draws': 0,
+                'closed': 0,
                 'pending': 0,
                 'failed': 0,
                 'win_rate': 0,
@@ -1009,15 +1009,15 @@ def get_trade_analysis():
                 'current_step': global_martingale_step
             })
         
-        # Count all result types
+        # Count all result types (using correct status names from models.py)
         wins = sum(1 for t in past_trades if t.get('result') == 'win')
         losses = sum(1 for t in past_trades if t.get('result') == 'loss')
-        draws = sum(1 for t in past_trades if t.get('result') == 'draw')
+        closed = sum(1 for t in past_trades if t.get('result') == 'closed')
         pending = sum(1 for t in past_trades if t.get('result') == 'pending')
         failed = sum(1 for t in past_trades if t.get('result') == 'failed')
         
-        # Total completed trades (exclude pending)
-        completed = wins + losses + draws
+        # Total completed trades (exclude pending and failed)
+        completed = wins + losses + closed
         total = len(past_trades)
         
         # Win rate based on completed trades only
@@ -1034,8 +1034,8 @@ def get_trade_analysis():
                 total_profit += amount * 0.8
             elif result == 'loss':
                 total_profit -= amount
-            elif result == 'draw':
-                # Draw returns the stake
+            elif result == 'closed':
+                # Closed/cancelled returns the stake
                 total_profit += 0
             # Pending and failed don't affect profit yet
         
@@ -1044,7 +1044,7 @@ def get_trade_analysis():
             'completed_trades': completed,
             'wins': wins,
             'losses': losses,
-            'draws': draws,
+            'closed': closed,
             'pending': pending,
             'failed': failed,
             'win_rate': round(win_rate, 2),
