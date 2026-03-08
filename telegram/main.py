@@ -508,14 +508,25 @@ async def execute_strategy_trade(client, asset_name: str, order_direction: Order
             })
             return
         
-        # Use global martingale step for all assets
-        current_amount = TRADE_AMOUNT * (MULTIPLIER ** global_martingale_step)
-        current_step = global_martingale_step  # Save current step for this trade
+        # 🔥 MARTINGALE: Check if there are pending trades
+        # If yes, use current step + 1 (assume previous will lose)
+        # If no, use current step (which is either 0 or set by previous result)
+        pending_count = sum(1 for trade in past_trades if trade['result'] == 'pending')
+        
+        if pending_count > 0:
+            # There are pending trades, assume they will lose and increment
+            current_step = min(global_martingale_step + pending_count, 8)
+            log_to_file(f"\n[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 📊 {pending_count} pending trade(s), using step {current_step}\n")
+        else:
+            # No pending trades, use current global step
+            current_step = global_martingale_step
+        
+        current_amount = TRADE_AMOUNT * (MULTIPLIER ** current_step)
         
         timestamp = datetime.now().strftime('%H:%M:%S.%f')[:-3]
         
         # Log trade attempt
-        log_to_file(f"\n[{timestamp}] ⚡ Placing order: {asset_name} {signal['direction']} ${current_amount:.2f} Global Step {current_step}\n")
+        log_to_file(f"[{timestamp}] ⚡ Placing order: {asset_name} {signal['direction']} ${current_amount:.2f} Step {current_step}\n")
         
         # Place order (this is fast - usually < 1 second)
         order_result = await client.place_order(
@@ -527,18 +538,6 @@ async def execute_strategy_trade(client, asset_name: str, order_direction: Order
         
         if order_result and order_result.status in [OrderStatus.ACTIVE, OrderStatus.PENDING]:
             # ✅ Order placed successfully
-            
-            # 🔥 MARTINGALE: Increment step IMMEDIATELY after placing order
-            # This ensures next trade uses higher amount (standard martingale)
-            # Will be reset to 0 only if this trade WINS
-            if global_martingale_step < 8:
-                global_martingale_step += 1
-                next_amount = TRADE_AMOUNT * (MULTIPLIER ** global_martingale_step)
-                log_to_file(f"[{timestamp}] 📈 Martingale step increased to {global_martingale_step} (next trade: ${next_amount:.2f})\n")
-            else:
-                # Max steps reached, reset
-                global_martingale_step = 0
-                log_to_file(f"[{timestamp}] 🔄 Max steps (8) reached, reset to 0\n")
             
             trade_info = {
                 'order_id': order_result.order_id,
@@ -564,7 +563,8 @@ async def execute_strategy_trade(client, asset_name: str, order_direction: Order
                 'direction': signal['direction'],
                 'amount': current_amount,
                 'step': current_step,  # Use the step this trade was placed with
-                'result': 'pending'
+                'result': 'pending',
+                'order_id': order_result.order_id  # Store order_id for tracking
             })
             
             # Log success
@@ -656,7 +656,7 @@ async def check_trade_result_later(order_id: str, asset_name: str, signal: Dict,
         
         # Update past trade result
         for trade in reversed(past_trades):
-            if trade['asset'] == asset_name and trade['result'] == 'pending':
+            if trade.get('order_id') == order_id and trade['result'] == 'pending':
                 trade['result'] = result
                 break
         
@@ -678,7 +678,7 @@ async def check_trade_result_later(order_id: str, asset_name: str, signal: Dict,
         }
         save_trade_to_csv(csv_data)
         
-        # Update GLOBAL martingale step based on result
+        # 🔥 MARTINGALE LOGIC: Update step based on result
         if result == 'win':
             # WIN: Reset global step to 0 and clear ALL past trades
             global_martingale_step = 0
@@ -686,9 +686,15 @@ async def check_trade_result_later(order_id: str, asset_name: str, signal: Dict,
             
             log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ WIN! Reset global step to 0 and cleared all history\n")
         else:
-            # LOSS: Step was already incremented when order was placed
-            # Just log the loss
-            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ LOSS! Current global step: {global_martingale_step}\n")
+            # LOSS: Increment step for next trade
+            if global_martingale_step < 8:
+                global_martingale_step += 1
+                next_amount = TRADE_AMOUNT * (MULTIPLIER ** global_martingale_step)
+                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ LOSS! Global step increased to {global_martingale_step} (next trade: ${next_amount:.2f})\n")
+            else:
+                # Max steps reached, reset
+                global_martingale_step = 0
+                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔄 Max steps (8) reached, reset to 0\n")
     
     except Exception as e:
         log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ Error in background result checker: {e}\n")
