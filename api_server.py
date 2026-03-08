@@ -764,10 +764,14 @@ def start_trading():
     global trading_active, trading_thread
     
     try:
+        print("🚀 Trading start request received")
+        
         if trading_active:
+            print("⚠️ Trading already active")
             return jsonify({'error': 'Trading is already active'}), 400
         
         data = request.get_json()
+        print(f"📊 Request data: {data}")
         
         # Update trading config
         initial_amount = data.get('initial_amount', 1.0)
@@ -775,8 +779,11 @@ def start_trading():
         multiplier = data.get('multiplier', 2.5)
         martingale_step = data.get('martingale_step', 0)
         
+        print(f"💰 Config - Amount: ${initial_amount}, Mode: {'DEMO' if is_demo else 'REAL'}, Multiplier: {multiplier}x, Step: {martingale_step}")
+        
         # Validate inputs
         if initial_amount <= 0:
+            print(f"❌ Invalid amount: {initial_amount}")
             return jsonify({'error': 'Initial amount must be greater than 0'}), 400
         
         if multiplier < 1.1:
@@ -785,14 +792,30 @@ def start_trading():
         if martingale_step < 0 or martingale_step > 10:
             return jsonify({'error': 'Martingale step must be between 0 and 10'}), 400
         
-        # Validate SSID exists
-        ssid = os.getenv('SSID')
-        if not ssid:
-            return jsonify({'error': 'SSID not configured. Please set SSID first.'}), 400
+        # Validate SSID exists based on mode
+        if is_demo:
+            ssid = os.getenv('SSID_DEMO') or os.getenv('SSID')
+            if not ssid:
+                print("❌ SSID_DEMO not found in .env")
+                return jsonify({'error': 'SSID_DEMO not configured. Please set Demo SSID first.'}), 400
+            print(f"✅ Using Demo SSID: {ssid[:20]}...")
+        else:
+            ssid = os.getenv('SSID_REAL')
+            if not ssid:
+                print("❌ SSID_REAL not found in .env")
+                return jsonify({'error': 'SSID_REAL not configured. Please set Real SSID first.'}), 400
+            print(f"✅ Using Real SSID: {ssid[:20]}...")
         
         # Validate Telegram credentials
-        if not all([os.getenv('TELEGRAM_API_ID'), os.getenv('TELEGRAM_API_HASH'), os.getenv('TELEGRAM_PHONE')]):
+        telegram_api_id = os.getenv('TELEGRAM_API_ID')
+        telegram_api_hash = os.getenv('TELEGRAM_API_HASH')
+        telegram_phone = os.getenv('TELEGRAM_PHONE')
+        
+        if not all([telegram_api_id, telegram_api_hash, telegram_phone]):
+            print(f"❌ Telegram credentials missing - API_ID: {bool(telegram_api_id)}, API_HASH: {bool(telegram_api_hash)}, PHONE: {bool(telegram_phone)}")
             return jsonify({'error': 'Telegram credentials not configured'}), 400
+        
+        print(f"✅ Telegram credentials validated - Phone: {telegram_phone}")
         
         # Save config to environment for trading bot to use
         env_path = os.path.join(os.path.dirname(__file__), '.env')
@@ -801,8 +824,12 @@ def start_trading():
         set_key(env_path, 'MULTIPLIER', str(multiplier))
         set_key(env_path, 'MARTINGALE_STEP', str(martingale_step))
         
+        print("💾 Configuration saved to .env")
+        
         # Reload environment
         load_dotenv(override=True)
+        
+        print("🔄 Environment reloaded")
         
         # Start trading in background thread
         trading_active = True
@@ -812,6 +839,8 @@ def start_trading():
             daemon=True
         )
         trading_thread.start()
+        
+        print("✅ Trading bot started successfully")
         
         return jsonify({
             'success': True,
@@ -826,6 +855,9 @@ def start_trading():
         })
     
     except Exception as e:
+        print(f"❌ Error starting trading: {e}")
+        import traceback
+        traceback.print_exc()
         trading_active = False
         return jsonify({'error': str(e)}), 500
 
