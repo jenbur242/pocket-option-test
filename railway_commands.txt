@@ -1,0 +1,24 @@
+# Railway CLI Commands
+# Copy and paste these commands one by one
+
+# First, login to Railway:
+railway login
+
+# Link to your project:
+railway link
+
+# Add all variables:
+railway variables --set SSID_DEMO="42[\"auth\",{\"session\":\"8kmju1f41cibg1vg5pihe37d7u\",\"isDemo\":1,\"uid\":116040367,\"platform\":2,\"isFastHistory\":true,\"isOptimized\":true}]"
+railway variables --set SSID_REAL="42[\"auth\",{\"session\":\"a:4:{s:10:\\"session_id\\";s:32:\\"2a8f01f1efeca20cc174c1b75eb6156a\\";s:10:\\"ip_address\\";s:14:\\"172.86.107.247\\";s:10:\\"user_agent\\";s:111:\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36\\";s:13:\\"last_activity\\";i:1772807404;}3fed45de8f1ed072a8cabf7a07571f05\",\"isDemo\":0,\"uid\":116040367,\"platform\":2,\"isFastHistory\":true,\"isOptimized\":true}]"
+railway variables --set SSID="42[\"auth\",{\"session\":\"8kmju1f41cibg1vg5pihe37d7u\",\"isDemo\":1,\"uid\":116040367,\"platform\":2,\"isFastHistory\":true,\"isOptimized\":true}]"
+railway variables --set TELEGRAM_API_ID="28375707"
+railway variables --set TELEGRAM_API_HASH="cf54e727df04363575f8ee9f120be2c9"
+railway variables --set TELEGRAM_PHONE="+12427272924"
+railway variables --set TRADE_AMOUNT="1"
+railway variables --set IS_DEMO="True"
+railway variables --set MULTIPLIER="2.5"
+railway variables --set MARTINGALE_STEP="0"
+railway variables --set TELEGRAM_STRING_SESSION="1AZWarzkBu1Mmo9f1F1ap3yoDD_N7fa8bGDSZLoWH6T5ZKq_isG7L1Rx586Kv9P9C_OTvz3hYPaRk9L_4W8pMHTLRVxRHqWTYA3s25VwLcNs251qfOn8iIgWR93F3xRPs4LvZTVxqNWg_vUJ-rwd2Rw-t8nixrru_KzbrXVVJcPJJJRyweNxF8KSfqYGkYbfpnZ947IalBOafWe0ic5EnvsYvZhYYGYPE-k5k9iqp1YI0Kf792exrFa60iWwle7j7ySRH3uTYhSdkvIP5JHXn82cywci1ptArY0Oixu7_dNm4F3XtI4Sex-dv6MoK3OMpqStbGAT8QD26Ml13qprY8RbbkSDXSt0="
+
+# Done! Now deploy:
+railway up
