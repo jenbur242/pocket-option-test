@@ -1381,6 +1381,55 @@ class AsyncPocketOptionClient:
         """Handle order closed event"""
         if self.enable_logging:
             logger.info(f"📊 Order closed: {data}")
+        
+        # Process the order result
+        # The data should contain order information including result
+        if isinstance(data, dict):
+            # Try to find the order ID - could be 'id', 'requestId', or 'orderId'
+            order_id = data.get('requestId') or data.get('id') or data.get('orderId')
+            
+            if order_id:
+                order_id = str(order_id)
+                
+                # Check if this order is in active orders
+                if order_id in self._active_orders:
+                    active_order = self._active_orders[order_id]
+                    
+                    # Extract profit and determine status
+                    profit = float(data.get('profit', 0))
+                    
+                    # Determine status based on profit
+                    if profit > 0:
+                        status = OrderStatus.WIN
+                    elif profit < 0:
+                        status = OrderStatus.LOSE
+                    else:
+                        # Zero profit could be a draw/closed
+                        status = OrderStatus.CLOSED
+                    
+                    # Create result
+                    result = OrderResult(
+                        order_id=active_order.order_id,
+                        asset=active_order.asset,
+                        amount=active_order.amount,
+                        direction=active_order.direction,
+                        duration=active_order.duration,
+                        status=status,
+                        placed_at=active_order.placed_at,
+                        expires_at=active_order.expires_at,
+                        profit=profit,
+                        payout=data.get('payout'),
+                    )
+                    
+                    # Move from active to completed
+                    self._order_results[order_id] = result
+                    del self._active_orders[order_id]
+                    
+                    if self.enable_logging:
+                        logger.success(
+                            f"✅ Order {order_id} completed: {status.value} - Profit: ${profit:.2f}"
+                        )
+        
         await self._emit_event("order_closed", data)
 
     async def _on_stream_update(self, data: Dict[str, Any]) -> None:
