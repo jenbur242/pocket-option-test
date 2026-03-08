@@ -388,6 +388,8 @@ async def handle_trade_result(order_result):
     global past_trades, global_martingale_step
     
     try:
+        log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🎯 WebSocket Event Triggered! order_result type: {type(order_result)}\n")
+        
         order_id = order_result.order_id
         profit = order_result.profit if order_result.profit is not None else 0
         
@@ -504,7 +506,9 @@ async def get_persistent_client():
     )
     
     # Register event listener for trade results
-    client.on('order_closed', handle_trade_result)
+    log_to_file("📡 Registering WebSocket event listener for trade results...\n")
+    client.add_event_callback('order_closed', handle_trade_result)
+    log_to_file("✅ Event listener registered successfully\n")
     
     try:
         # Take proper time to connect (20 seconds)
