@@ -680,11 +680,14 @@ async def check_trade_result_later(order_id: str, asset_name: str, signal: Dict,
         
         # 🔥 MARTINGALE LOGIC: Update step based on result
         if result == 'win':
-            # WIN: Reset global step to 0 and clear ALL past trades
+            # WIN: Reset global step to 0
+            # Clear only COMPLETED trades, keep pending ones
             global_martingale_step = 0
-            past_trades.clear()
             
-            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ WIN! Reset global step to 0 and cleared all history\n")
+            # Remove only completed trades (win/loss), keep pending
+            past_trades[:] = [t for t in past_trades if t['result'] == 'pending']
+            
+            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ WIN! Reset global step to 0 (kept {len(past_trades)} pending trades)\n")
         else:
             # LOSS: Increment step for next trade
             if global_martingale_step < 8:
