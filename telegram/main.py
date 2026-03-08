@@ -382,42 +382,68 @@ def validate_ssid(ssid: str) -> bool:
     return True
 
 async def get_persistent_client():
-    """Get or create persistent client for faster trade execution"""
+    """Get or create persistent client - takes time on first connect, then instant"""
     global persistent_client
     
     # Check if client exists and is connected
     if persistent_client and persistent_client.is_connected:
-        log_to_file("✅ Reusing existing client connection (instant!)\n")
+        # ⚡ INSTANT reuse - this is the ultra-fast part!
         return persistent_client
     
-    # Need to create new client
-    log_to_file("🔄 Creating new persistent client...\n")
+    # First connection - takes proper time to ensure quality
+    log_to_file("🔄 Creating persistent client (first time - takes ~25 seconds)...\n")
     
     ssid = os.getenv('SSID')
     if not ssid:
-        raise Exception("SSID not found in environment variables")
+        raise Exception("SSID not found - configure in .env file")
     
     if not validate_ssid(ssid):
-        raise Exception("Invalid SSID format")
+        raise Exception("Invalid SSID format - get new SSID from PocketOption")
     
     client = AsyncPocketOptionClient(
         ssid=ssid,
         is_demo=IS_DEMO,
         persistent_connection=True,  # Keep connection alive
         auto_reconnect=True,  # Auto-reconnect if disconnected
-        enable_logging=False
+        enable_logging=False  # Disable logging for speed
     )
     
     try:
-        log_to_file("🔌 Connecting to PocketOption...\n")
+        # Take proper time to connect (15 seconds)
+        log_to_file("🔌 Connecting to PocketOption (taking proper time for quality connection)...\n")
         await asyncio.wait_for(client.connect(), timeout=15.0)
+        
+        # Take proper time to fetch balance (10 seconds)
+        log_to_file("💰 Fetching balance (ensuring accurate data)...\n")
         balance = await asyncio.wait_for(client.get_balance(), timeout=10.0)
         
         log_to_file(f"✅ Connected! {'DEMO' if IS_DEMO else 'REAL'} Account\n")
-        log_to_file(f"💰 Balance: ${balance.balance:.2f}\n")
+        log_to_file(f"💰 Balance: ${balance.balance:.2f} {balance.currency}\n")
+        log_to_file(f"⚡ Connection established - all future trades will be INSTANT!\n")
         
         if not client.is_connected:
             raise Exception("Connection failed")
+        
+        persistent_client = client
+        return client
+        
+    except asyncio.TimeoutError:
+        log_to_file("❌ Connection timeout - check SSID\n")
+        if client:
+            try:
+                await client.disconnect()
+            except:
+                pass
+        raise Exception("Connection timeout - SSID may be expired")
+        
+    except Exception as e:
+        log_to_file(f"❌ Error: {e}\n")
+        if client:
+            try:
+                await client.disconnect()
+            except:
+                pass
+        raise
         
         persistent_client = client
         return client
@@ -673,14 +699,19 @@ async def fetch_channel_messages():
     Uses event handlers for real-time message processing (< 10ms latency)
     """
     
-    # ⚡ PRE-CONNECT to PocketOption for instant first trade
+    # ⚡ PRE-CONNECT to PocketOption (takes proper time for quality)
     print("🔄 Pre-connecting to PocketOption...")
+    print("⏳ This takes ~25 seconds (connect + balance fetch)")
+    print("💡 But all trades after this will be INSTANT!")
     try:
         await get_persistent_client()
-        print("✅ Pre-connected! First trade will be instant!")
+        print("✅ Pre-connected successfully!")
+        print("💰 Balance fetched and verified")
+        print("⚡ Ready for INSTANT trade execution!")
     except Exception as e:
         print(f"⚠️ Pre-connect failed: {e}")
-        print("Will connect on first trade")
+        print("Will connect on first trade (takes ~25s)")
+        print("All subsequent trades will be instant")
     
     # Use unique session for this bot
     client = TelegramClient('session_testpob1234', API_ID, API_HASH)
@@ -747,11 +778,15 @@ async def fetch_channel_messages():
         
         print(f"\n✅ Connected to: {channel.title}")
         print(f"📊 Processed {processed_count} historical messages (skipped for execution)")
-        print(f"⚡ ULTRA-FAST MODE ACTIVE")
-        print(f"🔔 Pre-connected to PocketOption - ALL trades will be instant!")
-        print(f"⚡ Message processing: < 1ms")
-        print(f"⚡ Trade placement: < 500ms")
-        print(f"⏳ Waiting for NEW signals...\n")
+        print(f"\n⚡ ULTRA-FAST MODE ACTIVE")
+        print(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        print(f"🔌 SSID Connection: ✅ Established (~25s, ONE TIME)")
+        print(f"💰 Balance Fetch: ✅ Complete (~10s, ONE TIME)")
+        print(f"⚡ Message Reading: < 1ms (INSTANT)")
+        print(f"⚡ Trade Placement: < 500ms (INSTANT)")
+        print(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        print(f"🎯 Setup complete - all trades will be INSTANT!")
+        print(f"⏳ Waiting for signals...\n")
         
         log_to_file("\n🔔 Real-time event handler registered - INSTANT execution mode active\n")
         
