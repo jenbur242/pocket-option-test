@@ -836,7 +836,13 @@ async def fetch_channel_messages():
     except Exception as e:
         print(f"\n❌ Error: {e}")
     finally:
-        await client.disconnect()
+        # Properly disconnect and cleanup
+        try:
+            if client.is_connected():
+                await client.disconnect()
+        except Exception as cleanup_error:
+            # Silently ignore cleanup errors (event loop may be closed)
+            pass
 
 async def cleanup_shared_client():
     """Cleanup function (no longer needed with independent clients)"""

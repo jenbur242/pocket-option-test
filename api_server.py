@@ -1112,6 +1112,7 @@ def run_trading_bot(initial_amount, is_demo, multiplier, martingale_step):
     """Run trading bot in background with custom configuration"""
     global trading_active
     
+    loop = None
     try:
         # Update trading configuration in telegram.main module
         import telegram.main as trading_module
@@ -1173,10 +1174,23 @@ def run_trading_bot(initial_amount, is_demo, multiplier, martingale_step):
         trading_active = False
     
     finally:
-        try:
-            loop.close()
-        except:
-            pass
+        # Properly cleanup event loop
+        if loop:
+            try:
+                # Cancel all pending tasks
+                pending = asyncio.all_tasks(loop)
+                for task in pending:
+                    task.cancel()
+                
+                # Give tasks a chance to cleanup
+                if pending:
+                    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                
+                # Close the loop
+                loop.close()
+            except Exception as cleanup_error:
+                # Silently ignore cleanup errors
+                pass
 
 if __name__ == '__main__':
     # Get port from environment variable (Railway) or default to 5000
