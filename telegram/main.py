@@ -692,6 +692,27 @@ async def fetch_channel_messages():
     Uses event handlers for real-time message processing (< 10ms latency)
     """
     
+    # 🔐 Recreate session file from environment variable if needed (Railway)
+    session_file_base64 = os.getenv('TELEGRAM_SESSION_FILE')
+    session_journal_base64 = os.getenv('TELEGRAM_SESSION_JOURNAL')
+    
+    if session_file_base64:
+        print("🔐 Recreating session file from environment variable...")
+        import base64
+        
+        # Recreate main session file
+        session_data = base64.b64decode(session_file_base64)
+        with open('session_testpob1234.session', 'wb') as f:
+            f.write(session_data)
+        print("✅ Session file recreated")
+        
+        # Recreate journal file if available
+        if session_journal_base64:
+            journal_data = base64.b64decode(session_journal_base64)
+            with open('session_testpob1234.session-journal', 'wb') as f:
+                f.write(journal_data)
+            print("✅ Session journal file recreated")
+    
     # ⚡ PRE-CONNECT to PocketOption (takes proper time for quality)
     print("🔄 Pre-connecting to PocketOption...")
     print("⏳ This takes ~25 seconds (connect + balance fetch)")
@@ -707,12 +728,12 @@ async def fetch_channel_messages():
         print("All subsequent trades will be instant")
     
     # Use unique session for this bot
-    # If STRING_SESSION is available (Railway), use it. Otherwise use file session (local)
+    # Priority: 1. String session, 2. File session (recreated or local)
     if STRING_SESSION:
         print("🔐 Using string session (Railway deployment)")
         client = TelegramClient(StringSession(STRING_SESSION), API_ID, API_HASH)
     else:
-        print("📁 Using file session (local development)")
+        print("📁 Using file session (local or recreated from env)")
         client = TelegramClient('session_testpob1234', API_ID, API_HASH)
     
     try:

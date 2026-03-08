@@ -694,19 +694,46 @@ def test_telegram_connection():
         api_hash = os.getenv('TELEGRAM_API_HASH')
         phone = os.getenv('TELEGRAM_PHONE')
         channel = os.getenv('TELEGRAM_CHANNEL', 'testpob1234')
+        string_session = os.getenv('TELEGRAM_STRING_SESSION')
+        session_file_base64 = os.getenv('TELEGRAM_SESSION_FILE')
         
         if not all([api_id, api_hash, phone]):
             return jsonify({'error': 'Telegram credentials not configured'}), 400
         
         from telethon.sync import TelegramClient
+        from telethon.sessions import StringSession
+        import base64
+        
+        # Recreate session file from environment if available
+        if session_file_base64 and not string_session:
+            try:
+                session_data = base64.b64decode(session_file_base64)
+                with open('session_testpob1234.session', 'wb') as f:
+                    f.write(session_data)
+                
+                # Also recreate journal if available
+                session_journal_base64 = os.getenv('TELEGRAM_SESSION_JOURNAL')
+                if session_journal_base64:
+                    journal_data = base64.b64decode(session_journal_base64)
+                    with open('session_testpob1234.session-journal', 'wb') as f:
+                        f.write(journal_data)
+            except Exception as e:
+                return jsonify({'error': f'Failed to recreate session file: {str(e)}'}), 400
         
         async def test_connection():
-            client = TelegramClient('session_testpob1234', api_id, api_hash)
+            # Priority: 1. String session, 2. File session (recreated or local)
+            if string_session:
+                client = TelegramClient(StringSession(string_session), api_id, api_hash)
+                session_type = 'string'
+            else:
+                client = TelegramClient('session_testpob1234', api_id, api_hash)
+                session_type = 'file (recreated)' if session_file_base64 else 'file (local)'
+            
             await client.connect()
             
             if not await client.is_user_authorized():
                 await client.disconnect()
-                return {'error': 'Not authorized. Please complete OTP verification first.'}
+                return {'error': 'Not authorized. Please add TELEGRAM_STRING_SESSION or TELEGRAM_SESSION_FILE to Railway variables.'}
             
             try:
                 # Get channel entity
@@ -731,7 +758,8 @@ def test_telegram_connection():
                     'channel': channel_entity.title,
                     'channel_id': channel_entity.id,
                     'recent_messages': message_list,
-                    'message': f'Successfully connected to {channel_entity.title}'
+                    'message': f'Successfully connected to {channel_entity.title}',
+                    'session_type': session_type
                 }
                 
             except Exception as e:
