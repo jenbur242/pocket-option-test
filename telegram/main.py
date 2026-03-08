@@ -631,7 +631,8 @@ async def check_trade_result_later(order_id: str, asset_name: str, signal: Dict,
         
         # Check actual trade result using API
         try:
-            result_data = await client.check_win(order_id, max_wait_time=30.0)
+            # Increase timeout to 60 seconds to ensure we get the result
+            result_data = await client.check_win(order_id, max_wait_time=60.0)
             
             log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔍 Result data: {result_data}\n")
             
@@ -641,16 +642,21 @@ async def check_trade_result_later(order_id: str, asset_name: str, signal: Dict,
                 
                 # Log result
                 log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] Result: {result.upper()} | Profit: ${profit:.2f}\n")
+            elif result_data and result_data.get('timeout'):
+                # Timeout - result not received
+                result = 'unknown'
+                profit = 0
+                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⏰ Timeout waiting for result - marking as unknown\n")
             else:
-                # Couldn't get result, assume loss
-                result = 'loss'
-                profit = -amount
-                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] Could not verify result, assuming loss\n")
+                # Couldn't get result
+                result = 'unknown'
+                profit = 0
+                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] Could not verify result - marking as unknown\n")
         except Exception as e:
-            # Error checking result, assume loss
-            result = 'loss'
-            profit = -amount
-            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] Error checking result: {e}, assuming loss\n")
+            # Error checking result
+            result = 'unknown'
+            profit = 0
+            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] Error checking result: {e} - marking as unknown\n")
             import traceback
             log_to_file(f"{traceback.format_exc()}\n")
         
@@ -688,7 +694,7 @@ async def check_trade_result_later(order_id: str, asset_name: str, signal: Dict,
             past_trades[:] = [t for t in past_trades if t['result'] == 'pending']
             
             log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ WIN! Reset global step to 0 (kept {len(past_trades)} pending trades)\n")
-        else:
+        elif result == 'loss':
             # LOSS: Increment step for next trade
             if global_martingale_step < 8:
                 global_martingale_step += 1
@@ -696,6 +702,18 @@ async def check_trade_result_later(order_id: str, asset_name: str, signal: Dict,
                 log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ LOSS! Global step increased to {global_martingale_step} (next trade: ${next_amount:.2f})\n")
             else:
                 # Max steps reached, reset
+                global_martingale_step = 0
+                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔄 Max steps (8) reached, reset to 0\n")
+        elif result == 'draw':
+            # DRAW: Keep current step (no change)
+            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⚖️ DRAW! Keeping current step: {global_martingale_step}\n")
+        else:
+            # UNKNOWN: Treat as loss for safety
+            if global_martingale_step < 8:
+                global_martingale_step += 1
+                next_amount = TRADE_AMOUNT * (MULTIPLIER ** global_martingale_step)
+                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❓ UNKNOWN result! Treating as loss, step increased to {global_martingale_step}\n")
+            else:
                 global_martingale_step = 0
                 log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔄 Max steps (8) reached, reset to 0\n")
     

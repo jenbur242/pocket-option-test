@@ -1001,28 +1001,52 @@ def get_trade_analysis():
                 'total_trades': 0,
                 'wins': 0,
                 'losses': 0,
+                'draws': 0,
+                'pending': 0,
+                'failed': 0,
                 'win_rate': 0,
                 'total_profit': 0,
                 'current_step': global_martingale_step
             })
         
+        # Count all result types
         wins = sum(1 for t in past_trades if t.get('result') == 'win')
         losses = sum(1 for t in past_trades if t.get('result') == 'loss')
+        draws = sum(1 for t in past_trades if t.get('result') == 'draw')
+        pending = sum(1 for t in past_trades if t.get('result') == 'pending')
+        failed = sum(1 for t in past_trades if t.get('result') == 'failed')
+        
+        # Total completed trades (exclude pending)
+        completed = wins + losses + draws
         total = len(past_trades)
-        win_rate = (wins / total * 100) if total > 0 else 0
+        
+        # Win rate based on completed trades only
+        win_rate = (wins / completed * 100) if completed > 0 else 0
         
         # Calculate profit (simplified)
         total_profit = 0
         for trade in past_trades:
-            if trade.get('result') == 'win':
-                total_profit += trade.get('amount', 0) * 0.8  # Assuming 80% payout
-            elif trade.get('result') == 'loss':
-                total_profit -= trade.get('amount', 0)
+            result = trade.get('result')
+            amount = trade.get('amount', 0)
+            
+            if result == 'win':
+                # Assuming 80% payout (adjust based on actual payout)
+                total_profit += amount * 0.8
+            elif result == 'loss':
+                total_profit -= amount
+            elif result == 'draw':
+                # Draw returns the stake
+                total_profit += 0
+            # Pending and failed don't affect profit yet
         
         return jsonify({
             'total_trades': total,
+            'completed_trades': completed,
             'wins': wins,
             'losses': losses,
+            'draws': draws,
+            'pending': pending,
+            'failed': failed,
             'win_rate': round(win_rate, 2),
             'total_profit': round(total_profit, 2),
             'current_step': global_martingale_step
