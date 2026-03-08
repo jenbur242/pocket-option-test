@@ -2337,7 +2337,7 @@
             
             checkServerConnection(); // Check server first
             loadConfig();
-            updateStatus();
+            // DON'T call updateStatus() here - it will turn toggle OFF before auto-start
             updateAnalysis();
             updateTrades();
             updateMartingalePreview();
@@ -2380,16 +2380,25 @@
                     startTrading().then(() => {
                         console.log('✅ startTrading() completed');
                         addLog('✓ Trading bot started successfully', 'success');
+                        // Now start status updates
+                        updateStatus();
                     }).catch(err => {
                         console.error('❌ startTrading() error:', err);
                         addLog('✗ Auto-start failed: ' + err.message, 'error');
                         // Reset toggle on error
                         toggle.checked = false;
                         document.getElementById('toggleLabel').textContent = 'OFF';
+                        // Start status updates even on error
+                        updateStatus();
                     });
                 } else if (!toggle.checked) {
                     console.log('Toggle is OFF, skipping auto-start');
                     addLog('⏸ Auto-start disabled (toggle is OFF)', 'info');
+                    // Start status updates
+                    updateStatus();
+                } else {
+                    // Already active, start status updates
+                    updateStatus();
                 }
             }, 2000);
             
