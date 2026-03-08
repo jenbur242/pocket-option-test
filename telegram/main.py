@@ -393,9 +393,17 @@ async def get_persistent_client():
     # First connection - takes proper time to ensure quality
     log_to_file("🔄 Creating persistent client (first time - takes ~25 seconds)...\n")
     
-    ssid = os.getenv('SSID')
-    if not ssid:
-        raise Exception("SSID not found - configure in .env file")
+    # Get appropriate SSID based on mode
+    if IS_DEMO:
+        ssid = os.getenv('SSID_DEMO') or os.getenv('SSID')
+        if not ssid:
+            raise Exception("SSID_DEMO not found - configure in .env file")
+        log_to_file(f"🔑 Using DEMO SSID\n")
+    else:
+        ssid = os.getenv('SSID_REAL')
+        if not ssid:
+            raise Exception("SSID_REAL not found - configure in .env file. Real account requires separate SSID.")
+        log_to_file(f"🔑 Using REAL SSID\n")
     
     if not validate_ssid(ssid):
         raise Exception("Invalid SSID format - get new SSID from PocketOption")
@@ -813,10 +821,18 @@ def get_user_config():
     """Get user configuration from environment variables"""
     global TRADE_AMOUNT, IS_DEMO, MULTIPLIER
     
-    ssid = os.getenv('SSID')
-    if not ssid:
-        print("❌ SSID not found in .env file")
-        return False
+    # Check for appropriate SSID based on mode
+    is_demo = os.getenv('IS_DEMO', 'True').lower() == 'true'
+    if is_demo:
+        ssid = os.getenv('SSID_DEMO') or os.getenv('SSID')
+        if not ssid:
+            print("❌ SSID_DEMO not found in .env file")
+            return False
+    else:
+        ssid = os.getenv('SSID_REAL')
+        if not ssid:
+            print("❌ SSID_REAL not found in .env file. Real account requires separate SSID.")
+            return False
     
     api_id = os.getenv('TELEGRAM_API_ID')
     if not api_id:

@@ -53,16 +53,46 @@ class PersistentClientManager:
         self.last_balance_fetch = None
         self.balance_cache = {'demo': 0, 'real': 0, 'currency': 'USD'}
         self.connection_lock = threading.Lock()
-        self.ssid = None
+        self.demo_ssid = None
+        self.real_ssid = None
+        self.current_mode = None  # Track current trading mode
+        
+    def get_ssid_for_mode(self, is_demo: bool):
+        """Get appropriate SSID based on mode"""
+        if is_demo:
+            ssid = os.getenv('SSID_DEMO') or os.getenv('SSID')
+            if not ssid:
+                raise Exception("SSID_DEMO not configured in .env")
+            return ssid
+        else:
+            ssid = os.getenv('SSID_REAL')
+            if not ssid:
+                raise Exception("SSID_REAL not configured in .env. Please add your Real account SSID.")
+            return ssid
+        
+    async def get_client_for_mode(self, is_demo: bool):
+        """Get client based on trading mode (demo or real)"""
+        ssid = self.get_ssid_for_mode(is_demo)
+        if is_demo:
+            return await self.get_demo_client(ssid)
+        else:
+            return await self.get_real_client(ssid)
         
     async def get_demo_client(self, ssid: str):
         """Get or create demo client"""
         from pocketoptionapi_async import AsyncPocketOptionClient
         
         # Check if SSID changed
-        if self.ssid != ssid:
-            await self.disconnect_all()
-            self.ssid = ssid
+        if self.demo_ssid != ssid:
+            if self.demo_client:
+                try:
+                    await self.demo_client.disconnect()
+                    await asyncio.sleep(0.2)
+                except:
+                    pass
+            self.demo_client = None
+            self.demo_connected = False
+            self.demo_ssid = ssid
         
         # Return existing client if connected
         if self.demo_client and self.demo_connected:
@@ -88,9 +118,16 @@ class PersistentClientManager:
         from pocketoptionapi_async import AsyncPocketOptionClient
         
         # Check if SSID changed
-        if self.ssid != ssid:
-            await self.disconnect_all()
-            self.ssid = ssid
+        if self.real_ssid != ssid:
+            if self.real_client:
+                try:
+                    await self.real_client.disconnect()
+                    await asyncio.sleep(0.2)
+                except:
+                    pass
+            self.real_client = None
+            self.real_connected = False
+            self.real_ssid = ssid
         
         # Return existing client if connected
         if self.real_client and self.real_connected:
@@ -132,6 +169,11 @@ class PersistentClientManager:
             self.real_connected = False
         
         print("🔌 All clients disconnected")
+    
+    def get_current_mode(self):
+        """Get current trading mode from .env"""
+        is_demo = os.getenv('IS_DEMO', 'True').lower() == 'true'
+        return is_demo
 
 # Global persistent client manager
 persistent_client_manager = PersistentClientManager()
@@ -193,22 +235,32 @@ def get_config():
     Returns SSID status and Telegram config (without sensitive values)
     """
     try:
-        ssid = os.getenv('SSID')
+        ssid_demo = os.getenv('SSID_DEMO') or os.getenv('SSID')
+        ssid_real = os.getenv('SSID_REAL')
         telegram_api_id = os.getenv('TELEGRAM_API_ID')
         telegram_api_hash = os.getenv('TELEGRAM_API_HASH')
         telegram_phone = os.getenv('TELEGRAM_PHONE')
         telegram_channel = os.getenv('TELEGRAM_CHANNEL', 'testpob1234')
         
-        # Mask SSID for display (show first 20 and last 10 characters)
-        masked_ssid = None
-        if ssid and len(ssid) > 30:
-            masked_ssid = ssid[:20] + '...' + ssid[-10:]
-        elif ssid:
-            masked_ssid = ssid[:10] + '...'
+        # Mask SSIDs for display (show first 20 and last 10 characters)
+        def mask_ssid(ssid):
+            if ssid and len(ssid) > 30:
+                return ssid[:20] + '...' + ssid[-10:]
+            elif ssid:
+                return ssid[:10] + '...'
+            return None
+        
+        masked_ssid_demo = mask_ssid(ssid_demo)
+        masked_ssid_real = mask_ssid(ssid_real)
         
         return jsonify({
-            'ssid_configured': bool(ssid),
-            'ssid_preview': masked_ssid,
+            'ssid_demo_configured': bool(ssid_demo),
+            'ssid_real_configured': bool(ssid_real),
+            'ssid_demo_preview': masked_ssid_demo,
+            'ssid_real_preview': masked_ssid_real,
+            # Legacy fields for backward compatibility
+            'ssid_configured': bool(ssid_demo),
+            'ssid_preview': masked_ssid_demo,
             'telegram_configured': bool(telegram_api_id and telegram_api_hash and telegram_phone),
             'telegram': {
                 'api_id': telegram_api_id if telegram_api_id else None,
@@ -224,30 +276,48 @@ def get_config():
 @app.route('/api/ssid', methods=['POST'])
 def set_ssid():
     """
-    Set SSID for trading
-    Body: { "ssid": "42[\"auth\",{...}]" }
+    Set SSIDs for trading (both Demo and Real)
+    Body: { "ssid_demo": "42[\"auth\",{...}]", "ssid_real": "42[\"auth\",{...}]" }
     """
     try:
         data = request.get_json()
-        ssid = data.get('ssid')
+        ssid_demo = data.get('ssid_demo')
+        ssid_real = data.get('ssid_real')
         
-        if not ssid:
-            return jsonify({'error': 'SSID is required'}), 400
-        
-        # Basic validation
-        if not ssid.startswith('42["auth"'):
-            return jsonify({'error': 'Invalid SSID format'}), 400
+        if not ssid_demo and not ssid_real:
+            return jsonify({'error': 'At least one SSID is required'}), 400
         
         # Save to .env file
         env_path = os.path.join(os.path.dirname(__file__), '.env')
-        set_key(env_path, 'SSID', ssid)
+        
+        if ssid_demo:
+            # Basic validation
+            if not ssid_demo.startswith('42["auth"'):
+                return jsonify({'error': 'Invalid Demo SSID format'}), 400
+            set_key(env_path, 'SSID_DEMO', ssid_demo)
+            set_key(env_path, 'SSID', ssid_demo)  # Backward compatibility
+        
+        if ssid_real:
+            # Basic validation
+            if not ssid_real.startswith('42["auth"'):
+                return jsonify({'error': 'Invalid Real SSID format'}), 400
+            set_key(env_path, 'SSID_REAL', ssid_real)
         
         # Reload environment
         load_dotenv(override=True)
         
+        # Disconnect all clients to force reconnection with new SSIDs
+        global persistent_client_manager
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(persistent_client_manager.disconnect_all())
+        loop.close()
+        
         return jsonify({
             'success': True,
-            'message': 'SSID saved successfully'
+            'message': 'SSIDs saved successfully',
+            'demo_configured': bool(ssid_demo),
+            'real_configured': bool(ssid_real)
         })
     
     except Exception as e:
@@ -891,16 +961,6 @@ def get_balance():
     try:
         global client_balance, persistent_client_manager
         
-        # Check if SSID is configured
-        ssid = os.getenv('SSID')
-        if not ssid:
-            return jsonify({
-                'demo_balance': 0,
-                'real_balance': 0,
-                'currency': 'USD',
-                'error': 'SSID not configured. Please configure SSID in Configuration section first.'
-            }), 400
-        
         # Check cache age (cache for 5 seconds)
         if persistent_client_manager.last_balance_fetch:
             cache_age = (datetime.now() - persistent_client_manager.last_balance_fetch).total_seconds()
@@ -922,13 +982,14 @@ def get_balance():
             # Fetch Demo Balance using persistent client
             try:
                 print("📊 Getting demo balance...")
-                demo_client = await persistent_client_manager.get_demo_client(ssid)
+                demo_ssid = persistent_client_manager.get_ssid_for_mode(is_demo=True)
+                demo_client = await persistent_client_manager.get_demo_client(demo_ssid)
                 demo_balance = await asyncio.wait_for(demo_client.get_balance(), timeout=10.0)
                 results['demo'] = demo_balance.balance
                 results['currency'] = demo_balance.currency
                 print(f"✅ Demo Balance: ${demo_balance.balance:.2f}")
             except asyncio.TimeoutError:
-                error_msg = "Demo balance fetch timeout - SSID may be expired"
+                error_msg = "Demo balance fetch timeout - SSID_DEMO may be expired"
                 print(f"⏱️ {error_msg}")
                 results['errors'].append(error_msg)
                 persistent_client_manager.demo_connected = False
@@ -941,12 +1002,13 @@ def get_balance():
             # Fetch Real Balance using persistent client
             try:
                 print("💰 Getting real balance...")
-                real_client = await persistent_client_manager.get_real_client(ssid)
+                real_ssid = persistent_client_manager.get_ssid_for_mode(is_demo=False)
+                real_client = await persistent_client_manager.get_real_client(real_ssid)
                 real_balance = await asyncio.wait_for(real_client.get_balance(), timeout=10.0)
                 results['real'] = real_balance.balance
                 print(f"✅ Real Balance: ${real_balance.balance:.2f}")
             except asyncio.TimeoutError:
-                error_msg = "Real balance fetch timeout - SSID may be expired"
+                error_msg = "Real balance fetch timeout - SSID_REAL may be expired"
                 print(f"⏱️ {error_msg}")
                 results['errors'].append(error_msg)
                 persistent_client_manager.real_connected = False

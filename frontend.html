@@ -278,7 +278,10 @@
                                             <span class="material-symbols-outlined text-primary">power_settings_new</span>
                                         </div>
                                         <div>
-                                            <h5 class="font-bold text-lg">Trading Bot</h5>
+                                            <h5 class="font-bold text-lg flex items-center gap-2">
+                                                Trading Bot
+                                                <span id="tradingModeBadge" class="px-2 py-1 rounded-lg bg-primary/20 text-primary text-xs font-bold">DEMO</span>
+                                            </h5>
                                             <p class="text-xs text-slate-400" id="tradingStatusText">Bot is active and monitoring signals</p>
                                         </div>
                                     </div>
@@ -444,9 +447,35 @@
                                 <div class="flex items-start gap-3">
                                     <span class="material-symbols-outlined text-success">check_circle</span>
                                     <div class="flex-1">
-                                        <p class="font-bold text-success mb-2">SSID Configured</p>
-                                        <p class="text-xs text-slate-400 font-mono" id="configuredSsid"></p>
-                                        <button onclick="showSsidForm()" class="mt-3 text-xs text-primary font-bold hover:underline">Update SSID</button>
+                                        <p class="font-bold text-success mb-2">✅ SSIDs Configured & Loaded</p>
+                                        <div class="space-y-2 mb-3">
+                                            <div class="p-2 bg-slate-800/50 rounded-lg">
+                                                <p class="text-xs text-slate-400 mb-1">Demo SSID:</p>
+                                                <p class="text-xs text-slate-300 font-mono" id="configuredSsidDemo">Not configured</p>
+                                            </div>
+                                            <div class="p-2 bg-slate-800/50 rounded-lg">
+                                                <p class="text-xs text-slate-400 mb-1">Real SSID:</p>
+                                                <p class="text-xs text-slate-300 font-mono" id="configuredSsidReal">Not configured</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Connection Status -->
+                                        <div class="flex gap-2 mb-3">
+                                            <div class="flex-1 p-2 bg-slate-800/50 rounded-lg">
+                                                <div class="flex items-center gap-2">
+                                                    <div id="demoConnectionDot" class="size-2 rounded-full bg-slate-500"></div>
+                                                    <span class="text-xs text-slate-400">Demo Connected</span>
+                                                </div>
+                                            </div>
+                                            <div class="flex-1 p-2 bg-slate-800/50 rounded-lg">
+                                                <div class="flex items-center gap-2">
+                                                    <div id="realConnectionDot" class="size-2 rounded-full bg-slate-500"></div>
+                                                    <span class="text-xs text-slate-400">Real Connected</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <button onclick="showSsidForm()" class="text-xs text-primary font-bold hover:underline">Update SSIDs</button>
                                     </div>
                                 </div>
                             </div>
@@ -455,7 +484,10 @@
                                 <div class="mb-4 p-4 bg-primary/10 border border-primary/30 rounded-xl">
                                     <div class="flex items-start gap-3">
                                         <span class="material-symbols-outlined text-primary">info</span>
-                                        <p class="text-xs text-slate-300">Get SSID from PocketOption WebSocket (F12 → Network → WS → Look for 42["auth"...])</p>
+                                        <div class="text-xs text-slate-300">
+                                            <p class="mb-2">Demo and Real accounts have different SSIDs.</p>
+                                            <p>Get SSID from PocketOption WebSocket (F12 → Network → WS → Look for 42["auth"...])</p>
+                                        </div>
                                     </div>
                                 </div>
                                 
@@ -476,14 +508,28 @@
                                     <p class="text-xs text-slate-500 mt-2">⏱️ Expected time: 15-25 seconds for quality connection</p>
                                 </div>
                                 
-                                <div class="space-y-2 mb-4">
-                                    <label class="text-sm font-bold text-slate-400 uppercase tracking-wider">SSID String</label>
-                                    <input id="ssid" type="text" placeholder='42["auth",{"session":"..."}]' class="w-full bg-slate-800 border-border-muted rounded-xl text-sm p-3"/>
+                                <div class="space-y-4 mb-4">
+                                    <div class="space-y-2">
+                                        <label class="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                            <span class="material-symbols-outlined text-xs text-primary">account_circle</span>
+                                            Demo Account SSID
+                                        </label>
+                                        <input id="ssidDemo" type="text" placeholder='42["auth",{"session":"...","isDemo":1,...}]' class="w-full bg-slate-800 border-border-muted rounded-xl text-sm p-3"/>
+                                    </div>
+                                    
+                                    <div class="space-y-2">
+                                        <label class="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                            <span class="material-symbols-outlined text-xs text-danger">account_balance_wallet</span>
+                                            Real Account SSID
+                                        </label>
+                                        <input id="ssidReal" type="text" placeholder='42["auth",{"session":"...","isDemo":0,...}]' class="w-full bg-slate-800 border-border-muted rounded-xl text-sm p-3"/>
+                                        <p class="text-xs text-slate-500">⚠️ Optional - Only needed if trading with real money</p>
+                                    </div>
                                 </div>
                                 
-                                <button id="saveSsidBtn" onclick="saveSsid()" class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all">
+                                <button id="saveSsidBtn" onclick="saveSsids()" class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all">
                                     <span class="material-symbols-outlined">save</span>
-                                    Save SSID
+                                    Save SSIDs
                                 </button>
                             </div>
                         </div>
@@ -1034,7 +1080,32 @@
         
         function updateAccountBadge() {
             const isDemo = document.getElementById('accountType').value === 'true';
-            document.getElementById('accountTypeBadge').textContent = isDemo ? 'DEMO' : 'REAL';
+            const badge = document.getElementById('accountTypeBadge');
+            const modeBadge = document.getElementById('tradingModeBadge');
+            
+            badge.textContent = isDemo ? 'DEMO' : 'REAL';
+            modeBadge.textContent = isDemo ? 'DEMO' : 'REAL';
+            
+            // Update mode badge color
+            if (isDemo) {
+                modeBadge.classList.remove('bg-danger/20', 'text-danger');
+                modeBadge.classList.add('bg-primary/20', 'text-primary');
+            } else {
+                modeBadge.classList.remove('bg-primary/20', 'text-primary');
+                modeBadge.classList.add('bg-danger/20', 'text-danger');
+            }
+            
+            // Log mode change
+            addLog(`🔄 Trading mode changed to ${isDemo ? 'DEMO' : 'REAL'}`, 'primary');
+            
+            // If bot is active, restart with new mode
+            const toggle = document.getElementById('tradingToggle');
+            if (toggle && toggle.checked) {
+                addLog('♻️ Restarting bot with new mode...', 'info');
+                setTimeout(() => {
+                    startTrading();
+                }, 500);
+            }
         }
         
         function updateMartingalePreview() {
@@ -1089,10 +1160,30 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    if (data.ssid_configured && data.ssid_preview) {
+                    // Auto-load SSIDs if configured
+                    if (data.ssid_demo_configured || data.ssid_real_configured) {
                         document.getElementById('ssidForm').classList.add('hidden');
                         document.getElementById('ssidConfigured').classList.remove('hidden');
-                        document.getElementById('configuredSsid').textContent = data.ssid_preview;
+                        
+                        // Update SSID displays
+                        document.getElementById('configuredSsidDemo').textContent = data.ssid_demo_preview || 'Not configured';
+                        document.getElementById('configuredSsidReal').textContent = data.ssid_real_preview || 'Not configured';
+                        
+                        // Log SSID loaded
+                        if (data.ssid_demo_configured) {
+                            addLog('🔑 Demo SSID loaded from .env - Ready to connect', 'success');
+                        }
+                        if (data.ssid_real_configured) {
+                            addLog('🔑 Real SSID loaded from .env - Ready to connect', 'success');
+                        }
+                        
+                        // Auto-connect to PocketOption in background
+                        setTimeout(() => {
+                            addLog('🔌 Establishing persistent connections to PocketOption...', 'info');
+                            updateBalance(); // This will create the persistent connections
+                        }, 1000);
+                    } else {
+                        addLog('⚠️ SSIDs not configured - Please add SSIDs in Configuration', 'warning');
                     }
                     
                     const sessionResponse = await fetch(`${API_BASE}/telegram/check-session`);
@@ -1124,11 +1215,13 @@
             document.getElementById('ssidForm').classList.remove('hidden');
         }
         
-        async function saveSsid() {
-            const ssid = document.getElementById('ssid').value;
-            if (!ssid) {
-                showAlert('Please enter SSID', 'error');
-                addLog('✗ SSID validation failed: empty value', 'error');
+        async function saveSsids() {
+            const ssidDemo = document.getElementById('ssidDemo').value;
+            const ssidReal = document.getElementById('ssidReal').value;
+            
+            if (!ssidDemo && !ssidReal) {
+                showAlert('Please enter at least one SSID', 'error');
+                addLog('✗ SSID validation failed: no SSIDs provided', 'error');
                 return;
             }
             
@@ -1144,6 +1237,8 @@
             saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
             
             addLog('🔑 Saving SSID configuration...', 'primary');
+            if (ssidDemo) addLog('📊 Demo SSID provided', 'info');
+            if (ssidReal) addLog('💰 Real SSID provided', 'info');
             addLog('⏳ Connecting to PocketOption (this may take 15-25 seconds)...', 'info');
             
             // Progress animation
@@ -1153,17 +1248,17 @@
                 elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
                 progressTime.textContent = `Elapsed: ${elapsed}s`;
                 
-                // Simulate progress (not linear, shows connection stages)
+                // Simulate progress
                 let progress = 0;
                 if (elapsed < 5) {
-                    progress = (elapsed / 5) * 30; // 0-30% in first 5s (connecting)
-                    progressText.textContent = 'Establishing WebSocket connection...';
+                    progress = (elapsed / 5) * 30;
+                    progressText.textContent = 'Establishing WebSocket connections...';
                 } else if (elapsed < 15) {
-                    progress = 30 + ((elapsed - 5) / 10) * 40; // 30-70% in next 10s (authenticating)
-                    progressText.textContent = 'Authenticating with SSID...';
+                    progress = 30 + ((elapsed - 5) / 10) * 40;
+                    progressText.textContent = 'Authenticating with SSIDs...';
                 } else {
-                    progress = 70 + ((elapsed - 15) / 10) * 30; // 70-100% after 15s (finalizing)
-                    progressText.textContent = 'Finalizing connection...';
+                    progress = 70 + ((elapsed - 15) / 10) * 30;
+                    progressText.textContent = 'Finalizing connections...';
                 }
                 
                 progressBar.style.width = Math.min(progress, 95) + '%';
@@ -1173,21 +1268,30 @@
                 const response = await fetch(`${API_BASE}/ssid`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ssid })
+                    body: JSON.stringify({ 
+                        ssid_demo: ssidDemo || undefined,
+                        ssid_real: ssidReal || undefined
+                    })
                 });
                 
                 clearInterval(progressInterval);
                 const duration = ((Date.now() - startTime) / 1000).toFixed(2);
                 
                 if (response.ok) {
+                    const data = await response.json();
+                    
                     // Complete progress
                     progressBar.style.width = '100%';
                     progressText.textContent = '✓ Connection successful!';
                     progressTime.textContent = `Completed in ${duration}s`;
                     
-                    addLog(`✓ SSID configured successfully in ${duration}s`, 'success');
-                    showAlert('SSID saved successfully!', 'success');
-                    document.getElementById('ssid').value = '';
+                    addLog(`✓ SSIDs configured successfully in ${duration}s`, 'success');
+                    if (data.demo_configured) addLog('✓ Demo SSID saved', 'success');
+                    if (data.real_configured) addLog('✓ Real SSID saved', 'success');
+                    
+                    showAlert('SSIDs saved successfully!', 'success');
+                    document.getElementById('ssidDemo').value = '';
+                    document.getElementById('ssidReal').value = '';
                     
                     // Hide progress after 2 seconds
                     setTimeout(() => {
@@ -1204,7 +1308,7 @@
                     progressBar.classList.add('bg-danger');
                     
                     addLog(`✗ SSID configuration failed: ${data.error || 'Unknown error'}`, 'error');
-                    showAlert(data.error || 'Failed to save SSID', 'error');
+                    showAlert(data.error || 'Failed to save SSIDs', 'error');
                     
                     // Hide progress after 3 seconds
                     setTimeout(() => {
@@ -1223,7 +1327,7 @@
                 progressBar.classList.add('bg-danger');
                 
                 addLog('✗ Connection error during SSID configuration', 'error');
-                const errorMsg = handleFetchError(error, 'saveSsid');
+                const errorMsg = handleFetchError(error, 'saveSsids');
                 showAlert(errorMsg, 'error');
                 
                 // Hide progress after 3 seconds
@@ -1758,6 +1862,37 @@
                 console.error('Error updating upcoming count:', error);
             }
         }
+        
+        async function updateConnectionStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/connection/status`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Update demo connection indicator
+                    const demoDot = document.getElementById('demoConnectionDot');
+                    if (data.demo_connected) {
+                        demoDot.classList.remove('bg-slate-500');
+                        demoDot.classList.add('bg-success', 'animate-pulse');
+                    } else {
+                        demoDot.classList.remove('bg-success', 'animate-pulse');
+                        demoDot.classList.add('bg-slate-500');
+                    }
+                    
+                    // Update real connection indicator
+                    const realDot = document.getElementById('realConnectionDot');
+                    if (data.real_connected) {
+                        realDot.classList.remove('bg-slate-500');
+                        realDot.classList.add('bg-success', 'animate-pulse');
+                    } else {
+                        realDot.classList.remove('bg-success', 'animate-pulse');
+                        realDot.classList.add('bg-slate-500');
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating connection status:', error);
+            }
+        }
 
         async function updateTrades() {
             try {
@@ -1991,6 +2126,7 @@
             updateAnalysis();
             updateTrades();
             updateUpcomingCount();
+            updateConnectionStatus(); // Update connection indicators
         }, 2000);
         
         // Auto-refresh balance every 10 seconds (less frequent to avoid API overload)
@@ -2011,6 +2147,9 @@
         loadCachedBalance();
         loadCachedConfig();
         
+        // Set initial mode badge
+        updateAccountBadge();
+        
         checkServerConnection(); // Check server first
         loadConfig();
         updateStatus();
@@ -2019,17 +2158,22 @@
         updateMartingalePreview();
         updateBalance();
         updateUpcomingCount();
+        updateConnectionStatus(); // Check persistent connections
         
         // Auto-start trading after 2 seconds (give time for config to load)
         setTimeout(() => {
-            addLog('🤖 Auto-starting trading bot...', 'primary');
+            const isDemo = document.getElementById('accountType').value === 'true';
+            addLog(`🤖 Auto-starting trading bot in ${isDemo ? 'DEMO' : 'REAL'} mode...`, 'primary');
             startTrading();
         }, 2000);
         
         // Save config to cache when changed
         document.getElementById('initialAmount').addEventListener('change', saveTradingConfigToCache);
         document.getElementById('multiplier').addEventListener('change', saveTradingConfigToCache);
-        document.getElementById('accountType').addEventListener('change', saveTradingConfigToCache);
+        document.getElementById('accountType').addEventListener('change', () => {
+            saveTradingConfigToCache();
+            updateAccountBadge();
+        });
         document.getElementById('martingaleStep').addEventListener('change', saveTradingConfigToCache);
         
         // Initialize quick inputs with slider values
