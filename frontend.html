@@ -126,7 +126,7 @@
                             <span class="text-[10px] text-slate-400 uppercase font-bold">Real Balance</span>
                             <span class="text-sm font-bold text-success" id="realBalance">$0.00</span>
                         </div>
-                        <button onclick="refreshBalance()" class="ml-2 p-1 text-slate-400 hover:text-primary transition-colors" title="Refresh Balance">
+                        <button id="refreshBalanceBtn" onclick="refreshBalance()" class="ml-2 p-1 text-slate-400 hover:text-primary transition-colors" title="Refresh Balance (15-25s)">
                             <span class="material-symbols-outlined text-sm">refresh</span>
                         </button>
                     </div>
@@ -271,15 +271,24 @@
                                     </div>
                                 </div>
                                 
-                                <div class="flex gap-4">
-                                    <button onclick="startTrading()" class="flex-1 bg-success hover:bg-success/90 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-success/20">
-                                        <span class="material-symbols-outlined">play_arrow</span>
-                                        START BOT SESSION
-                                    </button>
-                                    <button onclick="stopTrading()" class="flex-1 bg-danger/10 border border-danger/30 hover:bg-danger/20 text-danger font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all">
-                                        <span class="material-symbols-outlined">stop</span>
-                                        EMERGENCY STOP
-                                    </button>
+                                <!-- Trading Toggle Switch -->
+                                <div class="flex items-center justify-between p-6 bg-slate-800/50 rounded-xl border border-border-muted">
+                                    <div class="flex items-center gap-4">
+                                        <div class="p-3 bg-primary/10 rounded-lg">
+                                            <span class="material-symbols-outlined text-primary">power_settings_new</span>
+                                        </div>
+                                        <div>
+                                            <h5 class="font-bold text-lg">Trading Bot</h5>
+                                            <p class="text-xs text-slate-400" id="tradingStatusText">Bot is active and monitoring signals</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Toggle Switch -->
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="tradingToggle" class="sr-only peer" checked onchange="toggleTrading()">
+                                        <div class="w-16 h-8 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-8 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-success"></div>
+                                        <span class="ml-3 text-sm font-bold text-slate-400 peer-checked:text-success" id="toggleLabel">ON</span>
+                                    </label>
                                 </div>
                             </div>
 
@@ -450,12 +459,29 @@
                                     </div>
                                 </div>
                                 
+                                <!-- Connection Progress -->
+                                <div id="ssidConnectionProgress" class="hidden mb-4 p-4 bg-slate-800/50 border border-border-muted rounded-xl">
+                                    <div class="flex items-center gap-3 mb-3">
+                                        <div class="animate-spin">
+                                            <span class="material-symbols-outlined text-primary">progress_activity</span>
+                                        </div>
+                                        <div class="flex-1">
+                                            <p class="text-sm font-bold text-slate-200" id="ssidProgressText">Connecting to PocketOption...</p>
+                                            <p class="text-xs text-slate-400 mt-1" id="ssidProgressTime">Elapsed: 0s</p>
+                                        </div>
+                                    </div>
+                                    <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
+                                        <div id="ssidProgressBar" class="h-full bg-primary transition-all duration-500" style="width: 0%"></div>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mt-2">⏱️ Expected time: 15-25 seconds for quality connection</p>
+                                </div>
+                                
                                 <div class="space-y-2 mb-4">
                                     <label class="text-sm font-bold text-slate-400 uppercase tracking-wider">SSID String</label>
                                     <input id="ssid" type="text" placeholder='42["auth",{"session":"..."}]' class="w-full bg-slate-800 border-border-muted rounded-xl text-sm p-3"/>
                                 </div>
                                 
-                                <button onclick="saveSsid()" class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all">
+                                <button id="saveSsidBtn" onclick="saveSsid()" class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all">
                                     <span class="material-symbols-outlined">save</span>
                                     Save SSID
                                 </button>
@@ -1028,33 +1054,109 @@
                 return;
             }
             
+            // Show progress indicator
+            const progressDiv = document.getElementById('ssidConnectionProgress');
+            const progressBar = document.getElementById('ssidProgressBar');
+            const progressText = document.getElementById('ssidProgressText');
+            const progressTime = document.getElementById('ssidProgressTime');
+            const saveBtn = document.getElementById('saveSsidBtn');
+            
+            progressDiv.classList.remove('hidden');
+            saveBtn.disabled = true;
+            saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            
             addLog('🔑 Saving SSID configuration...', 'primary');
             addLog('⏳ Connecting to PocketOption (this may take 15-25 seconds)...', 'info');
             
+            // Progress animation
+            let elapsed = 0;
+            const startTime = Date.now();
+            const progressInterval = setInterval(() => {
+                elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                progressTime.textContent = `Elapsed: ${elapsed}s`;
+                
+                // Simulate progress (not linear, shows connection stages)
+                let progress = 0;
+                if (elapsed < 5) {
+                    progress = (elapsed / 5) * 30; // 0-30% in first 5s (connecting)
+                    progressText.textContent = 'Establishing WebSocket connection...';
+                } else if (elapsed < 15) {
+                    progress = 30 + ((elapsed - 5) / 10) * 40; // 30-70% in next 10s (authenticating)
+                    progressText.textContent = 'Authenticating with SSID...';
+                } else {
+                    progress = 70 + ((elapsed - 15) / 10) * 30; // 70-100% after 15s (finalizing)
+                    progressText.textContent = 'Finalizing connection...';
+                }
+                
+                progressBar.style.width = Math.min(progress, 95) + '%';
+            }, 100);
+            
             try {
-                const startTime = Date.now();
                 const response = await fetch(`${API_BASE}/ssid`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ssid })
                 });
                 
+                clearInterval(progressInterval);
                 const duration = ((Date.now() - startTime) / 1000).toFixed(2);
                 
                 if (response.ok) {
+                    // Complete progress
+                    progressBar.style.width = '100%';
+                    progressText.textContent = '✓ Connection successful!';
+                    progressTime.textContent = `Completed in ${duration}s`;
+                    
                     addLog(`✓ SSID configured successfully in ${duration}s`, 'success');
                     showAlert('SSID saved successfully!', 'success');
                     document.getElementById('ssid').value = '';
-                    setTimeout(() => loadConfig(), 1000);
+                    
+                    // Hide progress after 2 seconds
+                    setTimeout(() => {
+                        progressDiv.classList.add('hidden');
+                        progressBar.style.width = '0%';
+                        saveBtn.disabled = false;
+                        saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        loadConfig();
+                    }, 2000);
                 } else {
                     const data = await response.json();
+                    progressText.textContent = '✗ Connection failed';
+                    progressBar.classList.remove('bg-primary');
+                    progressBar.classList.add('bg-danger');
+                    
                     addLog(`✗ SSID configuration failed: ${data.error || 'Unknown error'}`, 'error');
                     showAlert(data.error || 'Failed to save SSID', 'error');
+                    
+                    // Hide progress after 3 seconds
+                    setTimeout(() => {
+                        progressDiv.classList.add('hidden');
+                        progressBar.style.width = '0%';
+                        progressBar.classList.remove('bg-danger');
+                        progressBar.classList.add('bg-primary');
+                        saveBtn.disabled = false;
+                        saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }, 3000);
                 }
             } catch (error) {
+                clearInterval(progressInterval);
+                progressText.textContent = '✗ Connection error';
+                progressBar.classList.remove('bg-primary');
+                progressBar.classList.add('bg-danger');
+                
                 addLog('✗ Connection error during SSID configuration', 'error');
                 const errorMsg = handleFetchError(error, 'saveSsid');
                 showAlert(errorMsg, 'error');
+                
+                // Hide progress after 3 seconds
+                setTimeout(() => {
+                    progressDiv.classList.add('hidden');
+                    progressBar.style.width = '0%';
+                    progressBar.classList.remove('bg-danger');
+                    progressBar.classList.add('bg-primary');
+                    saveBtn.disabled = false;
+                    saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }, 3000);
             }
         }
         
@@ -1233,6 +1335,25 @@
         }
 
         // Trading Functions
+        async function toggleTrading() {
+            const toggle = document.getElementById('tradingToggle');
+            const toggleLabel = document.getElementById('toggleLabel');
+            const statusText = document.getElementById('tradingStatusText');
+            const botStatusBadge = document.getElementById('botStatusBadge');
+            
+            if (toggle.checked) {
+                // Start trading
+                await startTrading();
+                toggleLabel.textContent = 'ON';
+                statusText.textContent = 'Bot is active and monitoring signals';
+            } else {
+                // Stop trading
+                await stopTrading();
+                toggleLabel.textContent = 'OFF';
+                statusText.textContent = 'Bot is paused - not monitoring signals';
+            }
+        }
+        
         async function startTrading() {
             const initialAmount = parseFloat(document.getElementById('initialAmount').value);
             const isDemo = document.getElementById('accountType').value === 'true';
@@ -1242,6 +1363,9 @@
             if (initialAmount <= 0) {
                 showAlert('Initial amount must be greater than 0', 'error');
                 addLog('✗ Invalid trade amount: ' + initialAmount, 'error');
+                // Reset toggle
+                document.getElementById('tradingToggle').checked = false;
+                document.getElementById('toggleLabel').textContent = 'OFF';
                 return;
             }
             
@@ -1276,21 +1400,25 @@
         }
         
         async function stopTrading() {
+            addLog('⏹️ Stopping bot...', 'warning');
             try {
                 const response = await fetch(`${API_BASE}/trading/stop`, {
                     method: 'POST'
                 });
                 
                 if (response.ok) {
+                    addLog('✓ Bot stopped successfully', 'success');
                     showAlert('Trading stopped!', 'success');
                     document.getElementById('botStatusBadge').textContent = 'STOPPED';
                     document.getElementById('botStatusBadge').classList.remove('bg-success/20', 'border-success/50', 'text-success');
                     updateStatus();
                 } else {
                     const data = await response.json();
+                    addLog('✗ Failed to stop bot: ' + (data.error || 'Unknown error'), 'error');
                     showAlert(data.error || 'Failed to stop trading', 'error');
                 }
             } catch (error) {
+                addLog('✗ Connection error while stopping bot', 'error');
                 const errorMsg = handleFetchError(error, 'stopTrading');
                 showAlert(errorMsg, 'error');
             }
@@ -1301,7 +1429,17 @@
                 const response = await fetch(`${API_BASE}/trading/status`);
                 const data = await response.json();
                 
+                // Sync toggle with server status
+                const toggle = document.getElementById('tradingToggle');
+                const toggleLabel = document.getElementById('toggleLabel');
+                const statusText = document.getElementById('tradingStatusText');
+                
                 if (data.active) {
+                    // Update toggle
+                    toggle.checked = true;
+                    toggleLabel.textContent = 'ON';
+                    statusText.textContent = 'Bot is active and monitoring signals';
+                    
                     document.getElementById('connectionStatus').classList.remove('bg-slate-500');
                     document.getElementById('connectionStatus').classList.add('bg-success', 'animate-pulse');
                     document.getElementById('connectionText').textContent = 'LIVE MARKET CONNECTED';
@@ -1313,7 +1451,15 @@
                     document.getElementById('botHealthBar').classList.remove('bg-slate-600');
                     document.getElementById('botHealthBar').classList.add('bg-success');
                     document.getElementById('botHealthBar').style.width = '100%';
+                    
+                    document.getElementById('botStatusBadge').textContent = 'ACTIVE';
+                    document.getElementById('botStatusBadge').classList.add('bg-success/20', 'border-success/50', 'text-success');
                 } else {
+                    // Update toggle
+                    toggle.checked = false;
+                    toggleLabel.textContent = 'OFF';
+                    statusText.textContent = 'Bot is paused - not monitoring signals';
+                    
                     document.getElementById('connectionStatus').classList.remove('bg-success', 'animate-pulse');
                     document.getElementById('connectionStatus').classList.add('bg-slate-500');
                     document.getElementById('connectionText').textContent = 'IDLE';
@@ -1324,6 +1470,9 @@
                     document.getElementById('botHealthStatus').classList.remove('text-success');
                     document.getElementById('botHealthBar').classList.remove('bg-success');
                     document.getElementById('botHealthBar').classList.add('bg-slate-600');
+                    
+                    document.getElementById('botStatusBadge').textContent = 'STOPPED';
+                    document.getElementById('botStatusBadge').classList.remove('bg-success/20', 'border-success/50', 'text-success');
                     document.getElementById('botHealthBar').style.width = '0%';
                 }
             } catch (error) {
@@ -1429,13 +1578,33 @@
         }
         
         async function refreshBalance() {
+            const refreshBtn = document.getElementById('refreshBalanceBtn');
+            const btnIcon = refreshBtn.querySelector('.material-symbols-outlined');
+            
+            // Disable button and show loading
+            refreshBtn.disabled = true;
+            refreshBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            btnIcon.classList.add('animate-spin');
+            
             try {
                 addLog('🔄 Manual balance refresh requested...', 'primary');
+                addLog('⏳ Fetching from PocketOption (15-25s for quality connection)...', 'info');
                 showAlert('Fetching balance from PocketOption...', 'success');
                 
                 const startTime = Date.now();
+                
+                // Show elapsed time in logs
+                const timeInterval = setInterval(() => {
+                    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                    if (elapsed % 5 === 0) { // Log every 5 seconds
+                        addLog(`⏱️ Still connecting... ${elapsed}s elapsed`, 'info');
+                    }
+                }, 5000);
+                
                 const response = await fetch(`${API_BASE}/balance`);
                 const data = await response.json();
+                
+                clearInterval(timeInterval);
                 const duration = ((Date.now() - startTime) / 1000).toFixed(2);
                 
                 if (response.ok) {
@@ -1459,6 +1628,11 @@
                 addLog('✗ Connection error during balance fetch', 'error');
                 const errorMsg = handleFetchError(error, 'refreshBalance');
                 showAlert(errorMsg, 'error');
+            } finally {
+                // Re-enable button
+                refreshBtn.disabled = false;
+                refreshBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btnIcon.classList.remove('animate-spin');
             }
         }
         
@@ -1730,6 +1904,12 @@
         updateMartingalePreview();
         updateBalance();
         updateUpcomingCount();
+        
+        // Auto-start trading after 2 seconds (give time for config to load)
+        setTimeout(() => {
+            addLog('🤖 Auto-starting trading bot...', 'primary');
+            startTrading();
+        }, 2000);
         
         // Initialize quick inputs with slider values
         document.getElementById('quickTradeAmount').value = document.getElementById('initialAmount').value;
