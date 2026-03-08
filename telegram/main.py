@@ -383,6 +383,82 @@ def validate_ssid(ssid: str) -> bool:
         return False
     return True
 
+async def check_result_from_client(order_id: str, wait_seconds: int):
+    """Simple result checker - wait then check client._order_results"""
+    global past_trades, global_martingale_step
+    
+    try:
+        # Wait for trade to complete
+        log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⏳ Waiting {wait_seconds}s for trade {order_id} to complete...\n")
+        await asyncio.sleep(wait_seconds)
+        
+        log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔍 Checking result for {order_id}...\n")
+        
+        # Get client
+        client = await get_persistent_client()
+        
+        # Simple check: is result in client._order_results?
+        if order_id in client._order_results:
+            order_result = client._order_results[order_id]
+            profit = order_result.profit if order_result.profit is not None else 0
+            
+            # Map status
+            if order_result.status == OrderStatus.WIN:
+                result = 'win'
+            elif order_result.status == OrderStatus.LOSE:
+                result = 'loss'
+            elif order_result.status == OrderStatus.CLOSED or order_result.status == OrderStatus.CANCELLED:
+                result = 'closed'
+            else:
+                result = 'pending'
+            
+            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ Result: {result.upper()} | Profit: ${profit:.2f}\n")
+            
+            # Update past_trades
+            for trade in reversed(past_trades):
+                if trade.get('order_id') == order_id:
+                    trade['result'] = result
+                    
+                    # Save to CSV
+                    csv_data = {
+                        'timestamp': datetime.now().isoformat(),
+                        'date': datetime.now().strftime('%Y-%m-%d'),
+                        'time': datetime.now().strftime('%H:%M:%S'),
+                        'asset': trade['asset'],
+                        'direction': trade['direction'],
+                        'amount': trade['amount'],
+                        'step': trade['step'],
+                        'duration': trade.get('duration', 1),
+                        'result': result,
+                        'profit_loss': profit,
+                        'balance_before': '',
+                        'balance_after': '',
+                        'multiplier': MULTIPLIER
+                    }
+                    save_trade_to_csv(csv_data)
+                    break
+            
+            # Update martingale step
+            if result == 'win':
+                global_martingale_step = 0
+                # Remove completed trades, keep only pending
+                past_trades[:] = [t for t in past_trades if t['result'] == 'pending']
+                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ WIN! Reset step to 0\n")
+            elif result == 'loss' or result == 'closed':
+                if global_martingale_step < 8:
+                    global_martingale_step += 1
+                    log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ LOSS! Step increased to {global_martingale_step}\n")
+                else:
+                    global_martingale_step = 0
+                    log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔄 Max steps reached, reset to 0\n")
+        else:
+            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⚠️ Result not found, keeping as pending\n")
+            
+    except Exception as e:
+        log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ Error: {e}\n")
+        import traceback
+        log_to_file(f"{traceback.format_exc()}\n")
+
 async def get_persistent_client():
     """Get or create persistent client - takes time on first connect, then instant"""
     global persistent_client
