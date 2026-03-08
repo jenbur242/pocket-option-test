@@ -898,6 +898,58 @@
     <script>
         // Use current domain for API calls (works both locally and on Railway)
         const API_BASE = window.location.origin + '/api';
+        
+        // Live Logging System - MUST BE DEFINED FIRST
+        function addLog(message, type = 'info') {
+            const logsContainer = document.getElementById('systemLogs');
+            if (!logsContainer) {
+                console.log(`[LOG] ${message}`);
+                return;
+            }
+            
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+            
+            const colors = {
+                'info': 'text-slate-400',
+                'success': 'text-success',
+                'error': 'text-danger',
+                'warning': 'text-yellow-400',
+                'primary': 'text-primary'
+            };
+            
+            const icons = {
+                'info': '•',
+                'success': '✓',
+                'error': '✗',
+                'warning': '⚠',
+                'primary': '→'
+            };
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = `${colors[type] || colors.info} flex gap-2`;
+            logEntry.innerHTML = `
+                <span class="text-slate-600">[${timestamp}]</span>
+                <span>${icons[type] || icons.info}</span>
+                <span class="flex-1">${message}</span>
+            `;
+            
+            logsContainer.appendChild(logEntry);
+            
+            // Auto-scroll to bottom
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+            
+            // Keep only last 100 logs
+            while (logsContainer.children.length > 100) {
+                logsContainer.removeChild(logsContainer.firstChild);
+            }
+        }
+        
+        function clearLogs() {
+            const logsContainer = document.getElementById('systemLogs');
+            if (logsContainer) {
+                logsContainer.innerHTML = '<div class="text-slate-500">Logs cleared. Waiting for activity...</div>';
+            }
+        }
         let currentCsvFile = '';
         
         // LocalStorage cache management
@@ -1035,51 +1087,6 @@
                 document.getElementById('connectionStatus').classList.add('bg-danger');
                 document.getElementById('connectionText').textContent = 'SERVER OFFLINE';
                 document.getElementById('connectionText').classList.remove('text-success', 'text-slate-500');
-
-        // Live Logging System
-        function addLog(message, type = 'info') {
-            const logsContainer = document.getElementById('systemLogs');
-            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
-            
-            const colors = {
-                'info': 'text-slate-400',
-                'success': 'text-success',
-                'error': 'text-danger',
-                'warning': 'text-yellow-400',
-                'primary': 'text-primary'
-            };
-            
-            const icons = {
-                'info': '•',
-                'success': '✓',
-                'error': '✗',
-                'warning': '⚠',
-                'primary': '→'
-            };
-            
-            const logEntry = document.createElement('div');
-            logEntry.className = `${colors[type] || colors.info} flex gap-2`;
-            logEntry.innerHTML = `
-                <span class="text-slate-600">[${timestamp}]</span>
-                <span>${icons[type] || icons.info}</span>
-                <span class="flex-1">${message}</span>
-            `;
-            
-            logsContainer.appendChild(logEntry);
-            
-            // Auto-scroll to bottom
-            logsContainer.scrollTop = logsContainer.scrollHeight;
-            
-            // Keep only last 100 logs
-            while (logsContainer.children.length > 100) {
-                logsContainer.removeChild(logsContainer.firstChild);
-            }
-        }
-        
-        function clearLogs() {
-            const logsContainer = document.getElementById('systemLogs');
-            logsContainer.innerHTML = '<div class="text-slate-500">Logs cleared. Waiting for activity...</div>';
-        }
                 document.getElementById('connectionText').classList.add('text-danger');
             } else if (error.message.includes('NetworkError')) {
                 message = '🌐 Network error. Check your internet connection.';
@@ -1185,14 +1192,8 @@
             // Log mode change
             addLog(`🔄 Trading mode changed to ${isDemo ? 'DEMO' : 'REAL'}`, 'primary');
             
-            // If bot is active, restart with new mode
-            const toggle = document.getElementById('tradingToggle');
-            if (toggle && toggle.checked) {
-                addLog('♻️ Restarting bot with new mode...', 'info');
-                setTimeout(() => {
-                    startTrading();
-                }, 500);
-            }
+            // Don't auto-restart during page load - let auto-start handle it
+            // Only restart if user manually changes mode after page is loaded
         }
         
         function updateMartingalePreview() {
@@ -2321,46 +2322,81 @@
             checkServerConnection();
         }, 5000);
         
-        // Initial load
-        addLog('🚀 Deep Space Trading Bot initialized', 'success');
-        addLog('Connecting to server...', 'info');
-        
-        // Load cached data first for instant UI
-        loadCachedBalance();
-        loadCachedConfig();
-        
-        // Set initial mode badge
-        updateAccountBadge();
-        
-        checkServerConnection(); // Check server first
-        loadConfig();
-        updateStatus();
-        updateAnalysis();
-        updateTrades();
-        updateMartingalePreview();
-        updateBalance();
-        updateUpcomingCount();
-        updateConnectionStatus(); // Check persistent connections
-        
-        // Auto-start trading after 2 seconds (give time for config to load)
-        setTimeout(() => {
-            const isDemo = document.getElementById('accountType').value === 'true';
-            addLog(`🤖 Auto-starting trading bot in ${isDemo ? 'DEMO' : 'REAL'} mode...`, 'primary');
-            startTrading();
-        }, 2000);
-        
-        // Save config to cache when changed
-        document.getElementById('initialAmount').addEventListener('change', saveTradingConfigToCache);
-        document.getElementById('multiplier').addEventListener('change', saveTradingConfigToCache);
-        document.getElementById('accountType').addEventListener('change', () => {
-            saveTradingConfigToCache();
+        // Wait for DOM to be fully loaded before initializing
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initial load
+            addLog('🚀 Deep Space Trading Bot initialized', 'success');
+            addLog('Connecting to server...', 'info');
+            
+            // Load cached data first for instant UI
+            loadCachedBalance();
+            loadCachedConfig();
+            
+            // Set initial mode badge
             updateAccountBadge();
+            
+            checkServerConnection(); // Check server first
+            loadConfig();
+            updateStatus();
+            updateAnalysis();
+            updateTrades();
+            updateMartingalePreview();
+            updateBalance();
+            updateUpcomingCount();
+            updateConnectionStatus(); // Check persistent connections
+            
+            // Auto-start trading after 2 seconds (give time for config to load)
+            setTimeout(async () => {
+                console.log('🚀 Auto-start timer triggered');
+                const toggle = document.getElementById('tradingToggle');
+                const isDemo = document.getElementById('accountType').value === 'true';
+                console.log(`Account type: ${isDemo ? 'DEMO' : 'REAL'}, Toggle checked: ${toggle.checked}`);
+                
+                // Check if trading is already active
+                try {
+                    const statusResponse = await fetch(`${API_BASE}/trading/status`);
+                    const statusData = await statusResponse.json();
+                    
+                    if (statusData.active) {
+                        console.log('✅ Trading already active, skipping auto-start');
+                        addLog('✓ Trading already active', 'success');
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error checking status:', error);
+                }
+                
+                // Only start if toggle is checked (it's checked by default in HTML)
+                if (toggle.checked) {
+                    addLog(`🤖 Auto-starting trading bot in ${isDemo ? 'DEMO' : 'REAL'} mode...`, 'primary');
+                    console.log('Calling startTrading()...');
+                    startTrading().then(() => {
+                        console.log('✅ startTrading() completed');
+                    }).catch(err => {
+                        console.error('❌ startTrading() error:', err);
+                        addLog('✗ Auto-start failed: ' + err.message, 'error');
+                        // Reset toggle on error
+                        toggle.checked = false;
+                        document.getElementById('toggleLabel').textContent = 'OFF';
+                    });
+                } else {
+                    console.log('Toggle is OFF, skipping auto-start');
+                }
+            }, 2000);
+            
+            // Save config to cache when changed
+            document.getElementById('initialAmount').addEventListener('change', saveTradingConfigToCache);
+            document.getElementById('multiplier').addEventListener('change', saveTradingConfigToCache);
+            document.getElementById('accountType').addEventListener('change', () => {
+                saveTradingConfigToCache();
+                updateAccountBadge();
+            });
+            document.getElementById('martingaleStep').addEventListener('change', saveTradingConfigToCache);
+            
+            // Initialize quick inputs with slider values
+            document.getElementById('quickTradeAmount').value = document.getElementById('initialAmount').value;
+            document.getElementById('quickMultiplier').value = document.getElementById('multiplier').value;
         });
-        document.getElementById('martingaleStep').addEventListener('change', saveTradingConfigToCache);
-        
-        // Initialize quick inputs with slider values
-        document.getElementById('quickTradeAmount').value = document.getElementById('initialAmount').value;
-        document.getElementById('quickMultiplier').value = document.getElementById('multiplier').value;
     </script>
 </body>
 </html>

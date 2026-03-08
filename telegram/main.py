@@ -417,16 +417,20 @@ async def get_persistent_client():
     )
     
     try:
-        # Take proper time to connect (15 seconds)
+        # Take proper time to connect (20 seconds)
         log_to_file("🔌 Connecting to PocketOption (taking proper time for quality connection)...\n")
-        await asyncio.wait_for(client.connect(), timeout=15.0)
+        await asyncio.wait_for(client.connect(), timeout=20.0)
         
-        # Take proper time to fetch balance (10 seconds)
+        # Try to fetch balance but don't fail if it times out
         log_to_file("💰 Fetching balance (ensuring accurate data)...\n")
-        balance = await asyncio.wait_for(client.get_balance(), timeout=10.0)
+        try:
+            balance = await asyncio.wait_for(client.get_balance(), timeout=15.0)
+            log_to_file(f"✅ Connected! {'DEMO' if IS_DEMO else 'REAL'} Account\n")
+            log_to_file(f"💰 Balance: ${balance.balance:.2f} {balance.currency}\n")
+        except Exception as balance_error:
+            log_to_file(f"⚠️ Balance fetch failed (but connection OK): {balance_error}\n")
+            log_to_file("✅ Connected! Proceeding without balance check\n")
         
-        log_to_file(f"✅ Connected! {'DEMO' if IS_DEMO else 'REAL'} Account\n")
-        log_to_file(f"💰 Balance: ${balance.balance:.2f} {balance.currency}\n")
         log_to_file(f"⚡ Connection established - all future trades will be INSTANT!\n")
         
         if not client.is_connected:
@@ -443,27 +447,6 @@ async def get_persistent_client():
             except:
                 pass
         raise Exception("Connection timeout - SSID may be expired")
-        
-    except Exception as e:
-        log_to_file(f"❌ Error: {e}\n")
-        if client:
-            try:
-                await client.disconnect()
-            except:
-                pass
-        raise
-        
-        persistent_client = client
-        return client
-        
-    except asyncio.TimeoutError:
-        log_to_file("❌ Connection timeout - SSID may be expired\n")
-        if client:
-            try:
-                await client.disconnect()
-            except:
-                pass
-        raise Exception("Connection timeout")
         
     except Exception as e:
         log_to_file(f"❌ Error: {e}\n")
@@ -726,7 +709,49 @@ async def fetch_channel_messages():
     
     try:
         await client.start(PHONE_NUMBER)
+    except Exception as e:
+        error_msg = str(e).lower()
         
+        # Check for database lock error
+        if 'database is locked' in error_msg or 'database' in error_msg:
+            print(f"\n❌ Database lock error detected: {e}")
+            print("🔄 Automatically cleaning up session files...")
+            
+            # Close client if open
+            try:
+                await client.disconnect()
+            except:
+                pass
+            
+            # Delete session files
+            session_files = [
+                'session_testpob1234.session',
+                'session_testpob1234.session-journal'
+            ]
+            
+            deleted_count = 0
+            for session_file in session_files:
+                if os.path.exists(session_file):
+                    try:
+                        os.remove(session_file)
+                        deleted_count += 1
+                        print(f"✓ Deleted {session_file}")
+                    except Exception as del_error:
+                        print(f"⚠️ Could not delete {session_file}: {del_error}")
+            
+            if deleted_count > 0:
+                print(f"\n✅ Cleaned up {deleted_count} session file(s)")
+                print("💡 Please restart the bot. You will need to verify OTP again.")
+            else:
+                print("\n⚠️ No session files found to delete")
+            
+            return
+        else:
+            # Other error
+            print(f"\n❌ Telegram connection error: {e}")
+            return
+    
+    try:
         try:
             channel = await client.get_entity(CHANNEL_USERNAME)
         except Exception as e:

@@ -1,36 +1,38 @@
-Bot started at 2026-03-07 22:31:53
+Bot started at 2026-03-08 11:06:59
 Connected to: Test
+Pre-connected to PocketOption: Ready for instant trades!
 Processed 50 historical messages (skipped for execution)
 ⏳ Waiting for new signals...
 
 Note: Only NEW messages received after bot startup will be executed.
 This prevents multiple old signals from executing simultaneously.
 
-[22:32:19] New message ID 138
+🔔 INSTANT EXECUTION MODE: Using real-time event handlers
+Messages will execute within < 10ms of arrival
+⚡ ULTRA-FAST MODE: Pre-connected for instant first trade
+
+🔔 Real-time event handler registered - INSTANT execution mode active
+
+[11:07:21.026] 🔔 NEW MESSAGE RECEIVED (ID: 165)
+[11:07:21.028] ⚡ Message processed INSTANTLY
 Pending signals: 1, Upcoming trades: 0
 
-[22:32:50] 📅 Scheduling trade: AUD/USD OTC BUY in 0.001s
-[22:32:50] ✅ Trade scheduled, timer started
+[11:07:31.039] 🔔 NEW MESSAGE RECEIVED (ID: 166)
 
-[22:32:50] New message ID 139
+[11:07:31] 📅 Scheduling trade: AUD/USD OTC BUY in 0.001s
+[11:07:31] ✅ Trade scheduled, timer started
+[11:07:31.046] ⚡ Message processed INSTANTLY
 Pending signals: 2, Upcoming trades: 1
 
-[22:32:50] ⚡ Executing scheduled trade: AUD/USD OTC BUY
-[22:32:50] Creating event loop for trade execution
-[22:32:50] Running trade execution
+[11:07:31] ⚡ Executing scheduled trade: AUD/USD OTC BUY
+[11:07:31] Creating event loop for trade execution
+[11:07:31] Running trade execution
 
-[22:32:50] 📥 Trade signal received: AUD/USD OTC BUY
-🔑 Creating new client for trade
-🔌 Connecting to PocketOption...
-✅ Connected! DEMO Account
-💰 Balance: $48927.21
-[22:32:52] 📍 Mapped asset: AUDUSD_otc
+[11:07:31.062] 📥 Trade signal received: AUD/USD OTC BUY
+[11:07:31.076] 📍 Mapped asset: AUDUSD_otc
 
-[22:32:52] Placing order: AUDUSD_otc BUY $1.00 Global Step 0
-[22:32:52] ✅ Order placed! ID: 126ea83b-1ae2-473c-bf63-b62f9d14d8d1
-[22:33:57] ⏰ Trade duration completed, checking result...
-[22:33:57] 🔍 Result data: {'result': 'loss', 'profit': -1.0, 'order_id': '126ea83b-1ae2-473c-bf63-b62f9d14d8d1', 'completed': True, 'status': 'lose'}
-[22:33:57] Result: LOSS | Profit: $-1.00
-[22:33:57] ❌ LOSS! Global step increased to 1 ($2.50)
-[22:33:57] 🔌 Client disconnected
-[22:33:57] ✅ Trade execution completed
+[11:07:31.083] ⚡ Placing order: AUDUSD_otc BUY $1.00 Global Step 0
+[11:07:31.083] ✅ Order placed! ID: 5dedd0e0-0bff-440a-bfea-9ce495fafd1f
+[11:07:31.083] 🚀 Returning immediately - result will be checked in background
+[11:08:01.256] ⏳ Background task: Waiting 65s for trade 5dedd0e0-0bff-440a-bfea-9ce495fafd1f
+[11:08:01] ✅ Trade execution completed

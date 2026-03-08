@@ -1137,13 +1137,46 @@ def run_trading_bot(initial_amount, is_demo, multiplier, martingale_step):
         loop.run_until_complete(fetch_channel_messages())
     
     except Exception as e:
-        print(f"Trading bot error: {e}")
-        import traceback
-        traceback.print_exc()
+        error_msg = str(e).lower()
+        
+        # Check for database lock error
+        if 'database is locked' in error_msg or 'database' in error_msg:
+            print(f"\n❌ Database lock error detected: {e}")
+            print("🔄 Automatically cleaning up session files...")
+            
+            # Delete session files
+            session_files = [
+                'session_testpob1234.session',
+                'session_testpob1234.session-journal'
+            ]
+            
+            deleted_count = 0
+            for session_file in session_files:
+                if os.path.exists(session_file):
+                    try:
+                        os.remove(session_file)
+                        deleted_count += 1
+                        print(f"✓ Deleted {session_file}")
+                    except Exception as del_error:
+                        print(f"⚠️ Could not delete {session_file}: {del_error}")
+            
+            if deleted_count > 0:
+                print(f"\n✅ Cleaned up {deleted_count} session file(s)")
+                print("💡 Session files deleted. Please restart trading and verify OTP again.")
+            else:
+                print("\n⚠️ No session files found to delete")
+        else:
+            print(f"Trading bot error: {e}")
+            import traceback
+            traceback.print_exc()
+        
         trading_active = False
     
     finally:
-        loop.close()
+        try:
+            loop.close()
+        except:
+            pass
 
 if __name__ == '__main__':
     # Get port from environment variable (Railway) or default to 5000
