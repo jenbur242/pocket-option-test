@@ -326,12 +326,18 @@ def set_ssid():
 @app.route('/api/telegram/check-session', methods=['GET'])
 def check_telegram_session():
     """
-    Check if Telegram session exists
+    Check if Telegram session exists (file or environment variable)
     """
     try:
-        # Check if session file exists
+        # Check if session file exists OR if session is in environment variable
         session_file = 'session_testpob1234.session'
-        session_exists = os.path.exists(session_file)
+        session_file_exists = os.path.exists(session_file)
+        
+        # Check if session is stored in environment variables (Railway deployment)
+        session_env_exists = bool(os.getenv('TELEGRAM_SESSION_FILE') or os.getenv('TELEGRAM_STRING_SESSION'))
+        
+        # Session exists if either file exists or env variable is set
+        session_exists = session_file_exists or session_env_exists
         
         # Check if credentials are configured
         api_id = os.getenv('TELEGRAM_API_ID')
@@ -340,11 +346,21 @@ def check_telegram_session():
         
         credentials_configured = bool(api_id and api_hash and phone)
         
+        # Determine session type for debugging
+        session_type = None
+        if session_file_exists:
+            session_type = 'file'
+        elif os.getenv('TELEGRAM_SESSION_FILE'):
+            session_type = 'env_file'
+        elif os.getenv('TELEGRAM_STRING_SESSION'):
+            session_type = 'string'
+        
         return jsonify({
             'session_exists': session_exists,
             'credentials_configured': credentials_configured,
             'needs_otp': credentials_configured and not session_exists,
-            'phone': phone if phone else None
+            'phone': phone if phone else None,
+            'session_type': session_type  # For debugging
         })
     
     except Exception as e:
