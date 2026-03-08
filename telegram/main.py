@@ -7,6 +7,7 @@ import csv
 from pathlib import Path
 from dotenv import load_dotenv
 from telethon.sync import TelegramClient
+from telethon.sessions import StringSession
 from telethon.tl.functions.messages import GetHistoryRequest
 from telethon import events
 from datetime import datetime, timedelta
@@ -26,6 +27,7 @@ load_dotenv()
 API_ID = os.getenv('TELEGRAM_API_ID')
 API_HASH = os.getenv('TELEGRAM_API_HASH')
 PHONE_NUMBER = os.getenv('TELEGRAM_PHONE')
+STRING_SESSION = os.getenv('TELEGRAM_STRING_SESSION')  # For Railway deployment
 
 # Channel username (without t.me/) - configurable via environment
 CHANNEL_USERNAME = os.getenv('TELEGRAM_CHANNEL', 'testpob1234')
@@ -705,7 +707,13 @@ async def fetch_channel_messages():
         print("All subsequent trades will be instant")
     
     # Use unique session for this bot
-    client = TelegramClient('session_testpob1234', API_ID, API_HASH)
+    # If STRING_SESSION is available (Railway), use it. Otherwise use file session (local)
+    if STRING_SESSION:
+        print("🔐 Using string session (Railway deployment)")
+        client = TelegramClient(StringSession(STRING_SESSION), API_ID, API_HASH)
+    else:
+        print("📁 Using file session (local development)")
+        client = TelegramClient('session_testpob1234', API_ID, API_HASH)
     
     try:
         await client.start(PHONE_NUMBER)

@@ -10,8 +10,9 @@ Automated trading bot for Pocket Option with Telegram signal integration and Fla
 - 💻 Beautiful web interface for bot management
 - 📈 Real-time trade monitoring and statistics
 - 🔄 Support for Demo and Real accounts
+- ☁️ Railway deployment ready
 
-## Quick Start
+## Quick Start (Local)
 
 1. Install dependencies:
 ```bash
@@ -27,8 +28,34 @@ python api_server.py
 
 4. Configure SSID, Telegram credentials, and start trading!
 
+## Railway Deployment 🚀
+
+**Why trades don't work on Railway:** Railway doesn't have your Telegram session file.
+
+**Solution:** Use string session (takes 2 minutes)
+
+### Quick Setup:
+
+1. **Generate string session:**
+   ```bash
+   python generate_string_session.py
+   ```
+
+2. **Add to Railway variables:**
+   - Go to Railway Dashboard > Your Project > Variables
+   - Add `TELEGRAM_STRING_SESSION` with the generated value
+   - Add all other variables from `.env` file
+
+3. **Deploy:**
+   ```bash
+   git push
+   ```
+
+📖 **Full guide:** See [RAILWAY_DEPLOYMENT_GUIDE.md](RAILWAY_DEPLOYMENT_GUIDE.md)
+
 ## Documentation
 
+- [Railway Deployment Guide](RAILWAY_DEPLOYMENT_GUIDE.md) - Deploy to Railway
 - [API Documentation](API_DOCUMENTATION.md) - Complete API reference
 - [Quick Start Guide](QUICK_START.md) - Detailed setup instructions
 
