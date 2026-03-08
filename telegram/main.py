@@ -510,11 +510,12 @@ async def execute_strategy_trade(client, asset_name: str, order_direction: Order
         
         # Use global martingale step for all assets
         current_amount = TRADE_AMOUNT * (MULTIPLIER ** global_martingale_step)
+        current_step = global_martingale_step  # Save current step for this trade
         
         timestamp = datetime.now().strftime('%H:%M:%S.%f')[:-3]
         
         # Log trade attempt
-        log_to_file(f"\n[{timestamp}] ⚡ Placing order: {asset_name} {signal['direction']} ${current_amount:.2f} Global Step {global_martingale_step}\n")
+        log_to_file(f"\n[{timestamp}] ⚡ Placing order: {asset_name} {signal['direction']} ${current_amount:.2f} Global Step {current_step}\n")
         
         # Place order (this is fast - usually < 1 second)
         order_result = await client.place_order(
@@ -525,10 +526,24 @@ async def execute_strategy_trade(client, asset_name: str, order_direction: Order
         )
         
         if order_result and order_result.status in [OrderStatus.ACTIVE, OrderStatus.PENDING]:
+            # ✅ Order placed successfully
+            
+            # 🔥 MARTINGALE: Increment step IMMEDIATELY after placing order
+            # This ensures next trade uses higher amount (standard martingale)
+            # Will be reset to 0 only if this trade WINS
+            if global_martingale_step < 8:
+                global_martingale_step += 1
+                next_amount = TRADE_AMOUNT * (MULTIPLIER ** global_martingale_step)
+                log_to_file(f"[{timestamp}] 📈 Martingale step increased to {global_martingale_step} (next trade: ${next_amount:.2f})\n")
+            else:
+                # Max steps reached, reset
+                global_martingale_step = 0
+                log_to_file(f"[{timestamp}] 🔄 Max steps (8) reached, reset to 0\n")
+            
             trade_info = {
                 'order_id': order_result.order_id,
                 'amount': current_amount,
-                'step': global_martingale_step,
+                'step': current_step,  # Use the step this trade was placed with
                 'direction': signal['direction'],
                 'timestamp': timestamp,
                 'duration': signal['time_minutes'],
@@ -548,7 +563,7 @@ async def execute_strategy_trade(client, asset_name: str, order_direction: Order
                 'asset': asset_name,
                 'direction': signal['direction'],
                 'amount': current_amount,
-                'step': global_martingale_step,
+                'step': current_step,  # Use the step this trade was placed with
                 'result': 'pending'
             })
             
@@ -563,7 +578,7 @@ async def execute_strategy_trade(client, asset_name: str, order_direction: Order
                     asset_name,
                     signal,
                     current_amount,
-                    global_martingale_step
+                    current_step  # Pass the step this trade was placed with
                 )
             )
             background_tasks.add(task)
@@ -671,15 +686,9 @@ async def check_trade_result_later(order_id: str, asset_name: str, signal: Dict,
             
             log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ WIN! Reset global step to 0 and cleared all history\n")
         else:
-            # LOSS: Keep record and step up globally
-            if global_martingale_step < 3:
-                global_martingale_step += 1
-                next_amount = TRADE_AMOUNT * (MULTIPLIER ** global_martingale_step)
-                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ LOSS! Global step increased to {global_martingale_step} (${next_amount:.2f})\n")
-            else:
-                # Max steps reached, reset but keep the loss records
-                global_martingale_step = 0
-                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] Max steps reached, reset global step to 0\n")
+            # LOSS: Step was already incremented when order was placed
+            # Just log the loss
+            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ LOSS! Current global step: {global_martingale_step}\n")
     
     except Exception as e:
         log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ Error in background result checker: {e}\n")
