@@ -819,8 +819,8 @@ def get_balance():
                 if demo_client:
                     try:
                         await demo_client.disconnect()
-                        # Give time for cleanup
-                        await asyncio.sleep(0.1)
+                        # Brief delay for task cancellation to complete
+                        await asyncio.sleep(0.2)
                     except Exception as e:
                         print(f"⚠️ Demo client cleanup error: {e}")
             
@@ -841,8 +841,8 @@ def get_balance():
                 if real_client:
                     try:
                         await real_client.disconnect()
-                        # Give time for cleanup
-                        await asyncio.sleep(0.1)
+                        # Brief delay for task cancellation to complete
+                        await asyncio.sleep(0.2)
                     except Exception as e:
                         print(f"⚠️ Real client cleanup error: {e}")
             

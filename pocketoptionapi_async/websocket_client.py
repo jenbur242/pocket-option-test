@@ -123,6 +123,7 @@ class AsyncWebSocketClient:
         self.connection_info: Optional[ConnectionInfo] = None
         self.server_time: Optional[ServerTime] = None
         self._ping_task: Optional[asyncio.Task] = None
+        self._receive_task: Optional[asyncio.Task] = None  # Track receive task
         self._message_queue: asyncio.Queue = asyncio.Queue()
         self._event_handlers: Dict[str, List[Callable]] = {}
         self._running = False
@@ -311,11 +312,19 @@ class AsyncWebSocketClient:
 
         self._running = False
 
-        # Cancel background tasks
+        # Cancel ping task
         if self._ping_task and not self._ping_task.done():
             self._ping_task.cancel()
             try:
                 await self._ping_task
+            except asyncio.CancelledError:
+                pass
+
+        # Cancel receive task
+        if self._receive_task and not self._receive_task.done():
+            self._receive_task.cancel()
+            try:
+                await self._receive_task
             except asyncio.CancelledError:
                 pass
 
@@ -502,8 +511,8 @@ class AsyncWebSocketClient:
         # Start ping task
         self._ping_task = asyncio.create_task(self._ping_loop())
 
-        # Start message receiving task (only start it once here)
-        asyncio.create_task(self.receive_messages())
+        # Start message receiving task and track it
+        self._receive_task = asyncio.create_task(self.receive_messages())
 
     async def _ping_loop(self) -> None:
         """Send periodic ping messages"""
