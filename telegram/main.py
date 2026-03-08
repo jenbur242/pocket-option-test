@@ -383,121 +383,6 @@ def validate_ssid(ssid: str) -> bool:
         return False
     return True
 
-async def handle_trade_result(order_result):
-    """Handle trade result from WebSocket event - called automatically when trade completes"""
-    global past_trades, global_martingale_step
-    
-    try:
-        log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🎯 WebSocket Event Triggered! order_result type: {type(order_result)}\n")
-        
-        order_id = order_result.order_id
-        profit = order_result.profit if order_result.profit is not None else 0
-        
-        # Map OrderStatus to our internal status
-        if order_result.status == OrderStatus.WIN:
-            result = 'win'
-        elif order_result.status == OrderStatus.LOSE:
-            result = 'loss'
-        elif order_result.status == OrderStatus.CLOSED or order_result.status == OrderStatus.CANCELLED:
-            result = 'closed'
-        else:
-            result = 'pending'
-        
-        log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🎯 WebSocket Result: {order_id} -> {result.upper()} | Profit: ${profit:.2f}\n")
-        
-        # Update past trade result
-        trade_updated = False
-        for trade in reversed(past_trades):
-            if trade.get('order_id') == order_id and trade['result'] == 'pending':
-                trade['result'] = result
-                trade_updated = True
-                
-                # Save trade to CSV
-                csv_data = {
-                    'timestamp': datetime.now().isoformat(),
-                    'date': datetime.now().strftime('%Y-%m-%d'),
-                    'time': datetime.now().strftime('%H:%M:%S'),
-                    'asset': trade['asset'],
-                    'direction': trade['direction'],
-                    'amount': trade['amount'],
-                    'step': trade['step'],
-                    'duration': trade.get('duration', 1),
-                    'result': result,
-                    'profit_loss': profit,
-                    'balance_before': '',
-                    'balance_after': '',
-                    'multiplier': MULTIPLIER
-                }
-                save_trade_to_csv(csv_data)
-                break
-        
-        if not trade_updated:
-            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⚠️ Trade {order_id} not found in past_trades\n")
-            return
-        
-        # 🔥 MARTINGALE LOGIC: Update step based on result
-        if result == 'win':
-            # WIN: Reset global step to 0
-            # Clear only COMPLETED trades, keep pending ones
-            global_martingale_step = 0
-            
-            # Remove only completed trades (win/loss/closed), keep pending
-            past_trades[:] = [t for t in past_trades if t['result'] == 'pending']
-            
-            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ WIN! Reset global step to 0 (kept {len(past_trades)} pending trades)\n")
-        elif result == 'loss':
-            # LOSS: Increment step for next trade
-            if global_martingale_step < 8:
-                global_martingale_step += 1
-                next_amount = TRADE_AMOUNT * (MULTIPLIER ** global_martingale_step)
-                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ LOSS! Global step increased to {global_martingale_step} (next trade: ${next_amount:.2f})\n")
-            else:
-                # Max steps reached, reset
-                global_martingale_step = 0
-                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔄 Max steps (8) reached, reset to 0\n")
-        elif result == 'closed':
-            # CLOSED/CANCELLED: Treat as loss for martingale
-            if global_martingale_step < 8:
-                global_martingale_step += 1
-                next_amount = TRADE_AMOUNT * (MULTIPLIER ** global_martingale_step)
-                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⚪ CLOSED! Treating as loss, step increased to {global_martingale_step}\n")
-            else:
-                global_martingale_step = 0
-                log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔄 Max steps (8) reached, reset to 0\n")
-        
-    except Exception as e:
-        log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ Error in handle_trade_result: {e}\n")
-        import traceback
-        log_to_file(f"{traceback.format_exc()}\n")
-
-async def check_result_from_client(order_id: str, wait_seconds: int):
-    """Check trade result by polling client._order_results after trade completes"""
-    global past_trades, global_martingale_step
-    
-    try:
-        # Wait for trade to complete
-        await asyncio.sleep(wait_seconds)
-        
-        log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🔍 Checking result for {order_id}...\n")
-        
-        # Get client
-        client = await get_persistent_client()
-        
-        # Check if result is in client._order_results
-        if order_id in client._order_results:
-            order_result = client._order_results[order_id]
-            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ Found result in client._order_results\n")
-            
-            # Process the result using the same logic as handle_trade_result
-            await handle_trade_result(order_result)
-        else:
-            log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⚠️ Result not found in client._order_results, keeping as pending\n")
-            
-    except Exception as e:
-        log_to_file(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ❌ Error checking result: {e}\n")
-        import traceback
-        log_to_file(f"{traceback.format_exc()}\n")
-
 async def get_persistent_client():
     """Get or create persistent client - takes time on first connect, then instant"""
     global persistent_client
@@ -532,11 +417,6 @@ async def get_persistent_client():
         auto_reconnect=True,  # Auto-reconnect if disconnected
         enable_logging=False  # Disable logging for speed
     )
-    
-    # Register event listener for trade results
-    log_to_file("📡 Registering WebSocket event listener for trade results...\n")
-    client.add_event_callback('order_closed', handle_trade_result)
-    log_to_file("✅ Event listener registered successfully\n")
     
     try:
         # Take proper time to connect (20 seconds)
