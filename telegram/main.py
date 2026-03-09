@@ -234,12 +234,35 @@ async def place_trade(asset: str, direction: str, duration: int):
     
     try:
         # Check if there are pending trades - PREVENT DUPLICATE TRADES
-        pending_count = sum(1 for trade in past_trades if trade['result'] == 'pending')
+        pending_trades = [t for t in past_trades if t['result'] == 'pending']
+        pending_count = len(pending_trades)
         
         if pending_count > 0:
-            log_message(f"⏸️ Skipping trade - {pending_count} pending trade(s) already active")
-            log_message(f"💡 Waiting for current trade to complete before placing new one")
-            return
+            # Check if pending trades are stale (older than 10 minutes)
+            import time
+            current_time = time.time()
+            stale_trades = []
+            
+            for trade in pending_trades:
+                # Check if trade has a timestamp
+                if 'placed_timestamp' in trade:
+                    age_seconds = current_time - trade['placed_timestamp']
+                    # If trade is older than 10 minutes, consider it stale
+                    if age_seconds > 600:
+                        stale_trades.append(trade)
+                        log_message(f"⚠️ Found stale pending trade (age: {age_seconds:.0f}s), removing...")
+            
+            # Remove stale trades
+            if stale_trades:
+                past_trades[:] = [t for t in past_trades if t not in stale_trades]
+                pending_count = sum(1 for t in past_trades if t['result'] == 'pending')
+                log_message(f"🧹 Cleaned {len(stale_trades)} stale trade(s)")
+            
+            # Recheck pending count after cleanup
+            if pending_count > 0:
+                log_message(f"⏸️ Skipping trade - {pending_count} pending trade(s) already active")
+                log_message(f"💡 Waiting for current trade to complete before placing new one")
+                return
         
         # Get client
         client = await get_persistent_client()
@@ -279,7 +302,8 @@ async def place_trade(asset: str, direction: str, duration: int):
             log_message(f"   Placed at: {order_result.placed_at.strftime('%H:%M:%S')}")
             log_message(f"   Expires at: {order_result.expires_at.strftime('%H:%M:%S')}")
             
-            # Add to past trades
+            # Add to past trades with timestamp
+            import time
             past_trades.append({
                 'time': datetime.now().strftime('%H:%M:%S'),
                 'asset': asset_name,
@@ -288,7 +312,8 @@ async def place_trade(asset: str, direction: str, duration: int):
                 'step': current_step,
                 'duration': duration_minutes,
                 'result': 'pending',
-                'order_id': order_result.order_id
+                'order_id': order_result.order_id,
+                'placed_timestamp': time.time()  # Add timestamp for stale detection
             })
             
             # Check result in background

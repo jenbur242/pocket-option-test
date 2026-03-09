@@ -905,10 +905,44 @@ def stop_trading():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/trading/clear-pending', methods=['POST'])
+def clear_pending_trades():
+    """Clear all pending trades (useful for stuck trades)"""
+    global past_trades
+    
+    try:
+        pending_before = sum(1 for t in past_trades if t['result'] == 'pending')
+        
+        # Remove all pending trades
+        past_trades[:] = [t for t in past_trades if t['result'] != 'pending']
+        
+        pending_after = sum(1 for t in past_trades if t['result'] == 'pending')
+        
+        return jsonify({
+            'success': True,
+            'message': f'Cleared {pending_before} pending trade(s)',
+            'pending_before': pending_before,
+            'pending_after': pending_after
+        })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/trading/status', methods=['GET'])
 def get_trading_status():
     """Get current trading status"""
     try:
+        # Check if Telegram session exists
+        session_file_exists = os.path.exists('session_testpob1234.session')
+        session_journal_exists = os.path.exists('session_testpob1234.session-journal')
+        
+        # Check environment variables
+        telegram_configured = bool(
+            os.getenv('TELEGRAM_API_ID') and 
+            os.getenv('TELEGRAM_API_HASH') and 
+            os.getenv('TELEGRAM_PHONE')
+        )
+        
         return jsonify({
             'active': trading_active,
             'config': {
@@ -918,7 +952,13 @@ def get_trading_status():
                 'global_step': global_martingale_step
             },
             'upcoming_trades': 0,  # Simplified version doesn't schedule trades
-            'past_trades': len(past_trades)
+            'past_trades': len(past_trades),
+            'diagnostics': {
+                'session_file_exists': session_file_exists,
+                'session_journal_exists': session_journal_exists,
+                'telegram_configured': telegram_configured,
+                'trading_thread_alive': trading_thread.is_alive() if trading_thread else False
+            }
         })
     
     except Exception as e:
