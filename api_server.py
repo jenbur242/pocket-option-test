@@ -233,7 +233,7 @@ def get_connection_status():
 def get_config():
     """
     Get current configuration from .env file
-    Returns SSID status and Telegram config (without sensitive values)
+    Returns SSID status, Telegram config, and trading config (without sensitive values)
     """
     try:
         ssid_demo = os.getenv('SSID_DEMO') or os.getenv('SSID')
@@ -242,6 +242,12 @@ def get_config():
         telegram_api_hash = os.getenv('TELEGRAM_API_HASH')
         telegram_phone = os.getenv('TELEGRAM_PHONE')
         telegram_channel = os.getenv('TELEGRAM_CHANNEL', 'testpob1234')
+        
+        # Get trading configuration from .env
+        trade_amount = float(os.getenv('TRADE_AMOUNT', '1.0'))
+        is_demo = os.getenv('IS_DEMO', 'True').lower() == 'true'
+        multiplier = float(os.getenv('MULTIPLIER', '2.5'))
+        martingale_step = int(os.getenv('MARTINGALE_STEP', '0'))
         
         # Mask SSIDs for display (show first 20 and last 10 characters)
         def mask_ssid(ssid):
@@ -268,6 +274,12 @@ def get_config():
                 'api_hash': '***' + telegram_api_hash[-4:] if telegram_api_hash and len(telegram_api_hash) > 4 else None,
                 'phone': telegram_phone if telegram_phone else None,
                 'channel': telegram_channel
+            },
+            'trading': {
+                'trade_amount': trade_amount,
+                'is_demo': is_demo,
+                'multiplier': multiplier,
+                'martingale_step': martingale_step
             }
         })
     

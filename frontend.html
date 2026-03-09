@@ -1285,11 +1285,26 @@
                     document.getElementById('envTelegramPhone').textContent = configData.telegram?.phone || FALLBACK_CONFIG.telegram_phone;
                     document.getElementById('envTelegramChannel').textContent = configData.telegram?.channel || FALLBACK_CONFIG.telegram_channel;
                     
-                    // Get trading config from form (since it's not in API response)
-                    document.getElementById('envTradeAmount').textContent = '$' + document.getElementById('initialAmount').value;
-                    document.getElementById('envIsDemo').textContent = document.getElementById('accountType').value === 'true' ? 'DEMO' : 'REAL';
-                    document.getElementById('envMultiplier').textContent = document.getElementById('multiplier').value + 'x';
-                    document.getElementById('envMartingaleStep').textContent = document.getElementById('martingaleStep').value;
+                    // Load trading config from .env (via API)
+                    if (configData.trading) {
+                        // Set form values from .env
+                        document.getElementById('initialAmount').value = configData.trading.trade_amount || 1.0;
+                        document.getElementById('accountType').value = configData.trading.is_demo ? 'true' : 'false';
+                        document.getElementById('multiplier').value = configData.trading.multiplier || 2.5;
+                        document.getElementById('martingaleStep').value = configData.trading.martingale_step || 0;
+                        
+                        // Update displays
+                        updateStakeDisplay();
+                        updateMartingalePreview();
+                        
+                        addLog('✅ Trading config loaded from .env: $' + configData.trading.trade_amount, 'success');
+                    }
+                    
+                    // Update Account Information display
+                    document.getElementById('envTradeAmount').textContent = '$' + (configData.trading?.trade_amount || document.getElementById('initialAmount').value);
+                    document.getElementById('envIsDemo').textContent = (configData.trading?.is_demo ? 'DEMO' : 'REAL') || (document.getElementById('accountType').value === 'true' ? 'DEMO' : 'REAL');
+                    document.getElementById('envMultiplier').textContent = (configData.trading?.multiplier || document.getElementById('multiplier').value) + 'x';
+                    document.getElementById('envMartingaleStep').textContent = configData.trading?.martingale_step || document.getElementById('martingaleStep').value;
                     
                     // Auto-load SSIDs if configured
                     if (configData.ssid_demo_configured || configData.ssid_real_configured) {
