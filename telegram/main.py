@@ -35,10 +35,18 @@ CHANNELS = [
     {'username': None, 'id': 2420379150, 'name': 'David Cooper | Private signals'}
 ]
 
-# Trading configuration
-TRADE_AMOUNT = float(os.getenv('TRADE_AMOUNT', '1.0'))
-IS_DEMO = os.getenv('IS_DEMO', 'True').lower() == 'true'
-MULTIPLIER = float(os.getenv('MULTIPLIER', '2.5'))
+# Trading configuration - Read dynamically
+def get_trade_amount():
+    """Get current trade amount from environment"""
+    return float(os.getenv('TRADE_AMOUNT', '1.0'))
+
+def get_multiplier():
+    """Get current multiplier from environment"""
+    return float(os.getenv('MULTIPLIER', '2.5'))
+
+def get_is_demo():
+    """Get current demo mode from environment"""
+    return os.getenv('IS_DEMO', 'True').lower() == 'true'
 
 # Global martingale step
 global_martingale_step = 0
@@ -117,8 +125,10 @@ async def get_persistent_client():
     if persistent_client and persistent_client.is_connected:
         return persistent_client
     
-    # Get SSID
-    if IS_DEMO:
+    # Get SSID based on current demo mode
+    is_demo = get_is_demo()
+    
+    if is_demo:
         ssid = os.getenv('SSID_DEMO') or os.getenv('SSID')
         if not ssid:
             raise Exception("SSID_DEMO not found in .env file")
@@ -131,7 +141,7 @@ async def get_persistent_client():
     
     client = AsyncPocketOptionClient(
         ssid=ssid,
-        is_demo=IS_DEMO,
+        is_demo=is_demo,
         persistent_connection=False,
         auto_reconnect=True,
         enable_logging=True
@@ -270,9 +280,19 @@ async def place_trade(asset: str, direction: str, duration: int):
         # Map asset name
         asset_name = map_asset_name(asset)
         
+        # Get current trading configuration (dynamic from environment)
+        trade_amount = get_trade_amount()
+        multiplier = get_multiplier()
+        
         # Calculate amount with martingale
         current_step = global_martingale_step
-        current_amount = TRADE_AMOUNT * (MULTIPLIER ** current_step)
+        current_amount = trade_amount * (multiplier ** current_step)
+        
+        log_message(f"💰 Trade Calculation:")
+        log_message(f"   Base Amount: ${trade_amount}")
+        log_message(f"   Multiplier: {multiplier}x")
+        log_message(f"   Current Step: {current_step}")
+        log_message(f"   Calculated Amount: ${current_amount:.2f}")
         
         # Determine direction
         order_direction = OrderDirection.CALL if direction.upper() == 'BUY' else OrderDirection.PUT
@@ -412,9 +432,9 @@ async def main():
     log_message(f"Channels: {len(CHANNELS)} channels")
     for ch in CHANNELS:
         log_message(f"  - {ch['name']} (ID: {ch['id']})")
-    log_message(f"Account: {'DEMO' if IS_DEMO else 'REAL'}")
-    log_message(f"Initial Amount: ${TRADE_AMOUNT}")
-    log_message(f"Multiplier: {MULTIPLIER}x")
+    log_message(f"Account: {'DEMO' if get_is_demo() else 'REAL'}")
+    log_message(f"Initial Amount: ${get_trade_amount()}")
+    log_message(f"Multiplier: {get_multiplier()}x")
     log_message("="*60)
     
     try:

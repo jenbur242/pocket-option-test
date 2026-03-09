@@ -21,9 +21,9 @@ from telegram.main import (
     main as telegram_main,
     past_trades,
     global_martingale_step,
-    TRADE_AMOUNT,
-    IS_DEMO,
-    MULTIPLIER
+    get_trade_amount,
+    get_multiplier,
+    get_is_demo
 )
 
 # upcoming_trades removed from simplified main.py
@@ -946,9 +946,9 @@ def get_trading_status():
         return jsonify({
             'active': trading_active,
             'config': {
-                'trade_amount': TRADE_AMOUNT,
-                'is_demo': IS_DEMO,
-                'multiplier': MULTIPLIER,
+                'trade_amount': get_trade_amount(),
+                'is_demo': get_is_demo(),
+                'multiplier': get_multiplier(),
                 'global_step': global_martingale_step
             },
             'upcoming_trades': 0,  # Simplified version doesn't schedule trades
@@ -1054,7 +1054,7 @@ def get_trade_analysis():
                 'win_rate': 0,
                 'total_profit': 0,
                 'current_step': global_martingale_step,
-                'current_trade_amount': TRADE_AMOUNT * (MULTIPLIER ** global_martingale_step)
+                'current_trade_amount': get_trade_amount() * (get_multiplier() ** global_martingale_step)
             })
         
         # Count all result types
@@ -1099,7 +1099,7 @@ def get_trade_analysis():
             'win_rate': round(win_rate, 2),
             'total_profit': round(total_profit, 2),
             'current_step': global_martingale_step,
-            'current_trade_amount': round(TRADE_AMOUNT * (MULTIPLIER ** global_martingale_step), 2)
+            'current_trade_amount': round(get_trade_amount() * (get_multiplier() ** global_martingale_step), 2)
         })
     
     except Exception as e:
