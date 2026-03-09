@@ -352,22 +352,15 @@ def parse_signal(message_text: str) -> Dict:
 # Store last signal for direction matching - KEEP ASSET UNTIL WIN
 last_signal = {'asset': None, 'duration': None}
 
-# Track last processed message to prevent duplicates
-last_processed_message = {'text': None, 'timestamp': None}
+# Track last processed direction signal to prevent duplicates
+last_direction_signal = {'asset': None, 'direction': None, 'timestamp': None}
+
+# Lock to prevent concurrent trade placement
+trade_placement_lock = asyncio.Lock()
 
 async def process_message(message_text: str):
     """Process Telegram message and place trade if complete signal"""
-    global last_signal, last_processed_message
-    
-    # Prevent duplicate processing of same message within 5 seconds
-    import time
-    current_time = time.time()
-    
-    if (last_processed_message['text'] == message_text and 
-        last_processed_message['timestamp'] and 
-        current_time - last_processed_message['timestamp'] < 5):
-        log_message(f"⏭️ Skipping duplicate message (already processed)")
-        return
+    global last_signal, last_direction_signal
     
     signal = parse_signal(message_text)
     
@@ -381,16 +374,30 @@ async def process_message(message_text: str):
     if signal['direction'] and last_signal['asset'] and last_signal['duration']:
         log_message(f"🎯 Direction received: {signal['direction']}")
         
-        # Update last processed message
-        last_processed_message['text'] = message_text
-        last_processed_message['timestamp'] = current_time
-        
-        # Place trade immediately
-        await place_trade(
-            asset=last_signal['asset'],
-            direction=signal['direction'],
-            duration=last_signal['duration']
-        )
+        # Use lock to prevent concurrent trade placement
+        async with trade_placement_lock:
+            import time
+            current_time = time.time()
+            
+            # Check if this exact signal was just processed (within 3 seconds)
+            if (last_direction_signal['asset'] == last_signal['asset'] and
+                last_direction_signal['direction'] == signal['direction'] and
+                last_direction_signal['timestamp'] and
+                current_time - last_direction_signal['timestamp'] < 3):
+                log_message(f"⏭️ Skipping duplicate direction signal (already processed {current_time - last_direction_signal['timestamp']:.1f}s ago)")
+                return
+            
+            # Update last direction signal
+            last_direction_signal['asset'] = last_signal['asset']
+            last_direction_signal['direction'] = signal['direction']
+            last_direction_signal['timestamp'] = current_time
+            
+            # Place trade immediately
+            await place_trade(
+                asset=last_signal['asset'],
+                direction=signal['direction'],
+                duration=last_signal['duration']
+            )
         
         # DON'T clear last signal - keep it for martingale on same asset
         # It will only be replaced when a new asset signal comes
