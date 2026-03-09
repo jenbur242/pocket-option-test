@@ -775,133 +775,7 @@ def test_telegram_connection():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/trading/start', methods=['POST'])
-def start_trading():
-    """
-    Start trading bot
-    Body: { 
-        "is_demo": true, 
-        "multiplier": 2.5,
-        "martingale_step": 0
-    }
-    """
-    global trading_active, trading_thread
-    
-    try:
-        print("🚀 Trading start request received")
-        
-        if trading_active:
-            print("⚠️ Trading already active")
-            return jsonify({'error': 'Trading is already active'}), 400
-        
-        data = request.get_json()
-        print(f"📊 Request data: {data}")
-        
-        # Get config - TRADE_AMOUNT comes from .env only
-        trade_amount = float(os.getenv('TRADE_AMOUNT', '1.0'))
-        is_demo = data.get('is_demo', True)
-        multiplier = data.get('multiplier', 2.5)
-        martingale_step = data.get('martingale_step', 0)
-        
-        print(f"💰 Config - Amount: ${trade_amount} (from .env), Mode: {'DEMO' if is_demo else 'REAL'}, Multiplier: {multiplier}x, Step: {martingale_step}")
-        
-        # Validate inputs
-        if trade_amount <= 0:
-            print(f"❌ Invalid amount: {trade_amount}")
-            return jsonify({'error': 'TRADE_AMOUNT in .env must be greater than 0'}), 400
-        
-        if multiplier < 1.1:
-            return jsonify({'error': 'Multiplier must be at least 1.1'}), 400
-        
-        if martingale_step < 0 or martingale_step > 8:
-            return jsonify({'error': 'Martingale step must be between 0 and 8'}), 400
-        
-        # Validate SSID exists based on mode
-        if is_demo:
-            ssid = os.getenv('SSID_DEMO') or os.getenv('SSID')
-            if not ssid:
-                print("❌ SSID_DEMO not found in .env")
-                return jsonify({'error': 'SSID_DEMO not configured. Please set Demo SSID first.'}), 400
-            print(f"✅ Using Demo SSID: {ssid[:20]}...")
-        else:
-            ssid = os.getenv('SSID_REAL')
-            if not ssid:
-                print("❌ SSID_REAL not found in .env")
-                return jsonify({'error': 'SSID_REAL not configured. Please set Real SSID first.'}), 400
-            print(f"✅ Using Real SSID: {ssid[:20]}...")
-        
-        # Validate Telegram credentials
-        telegram_api_id = os.getenv('TELEGRAM_API_ID')
-        telegram_api_hash = os.getenv('TELEGRAM_API_HASH')
-        telegram_phone = os.getenv('TELEGRAM_PHONE')
-        
-        if not all([telegram_api_id, telegram_api_hash, telegram_phone]):
-            print(f"❌ Telegram credentials missing - API_ID: {bool(telegram_api_id)}, API_HASH: {bool(telegram_api_hash)}, PHONE: {bool(telegram_phone)}")
-            return jsonify({'error': 'Telegram credentials not configured'}), 400
-        
-        print(f"✅ Telegram credentials validated - Phone: {telegram_phone}")
-        
-        # Save config to environment for trading bot to use (except TRADE_AMOUNT)
-        env_path = os.path.join(os.path.dirname(__file__), '.env')
-        set_key(env_path, 'IS_DEMO', str(is_demo))
-        set_key(env_path, 'MULTIPLIER', str(multiplier))
-        set_key(env_path, 'MARTINGALE_STEP', str(martingale_step))
-        
-        print("💾 Configuration saved to .env")
-        
-        # Reload environment
-        load_dotenv(override=True)
-        
-        print("🔄 Environment reloaded")
-        
-        # Start trading in background thread
-        trading_active = True
-        trading_thread = threading.Thread(
-            target=run_trading_bot, 
-            args=(is_demo, multiplier, martingale_step),
-            daemon=True
-        )
-        trading_thread.start()
-        
-        print("✅ Trading bot started successfully")
-        
-        return jsonify({
-            'success': True,
-            'message': 'Trading started successfully',
-            'config': {
-                'trade_amount': trade_amount,
-                'is_demo': is_demo,
-                'multiplier': multiplier,
-                'martingale_step': martingale_step,
-                'current_trade_amount': trade_amount * (multiplier ** martingale_step)
-            }
-        })
-    
-    except Exception as e:
-        print(f"❌ Error starting trading: {e}")
-        import traceback
-        traceback.print_exc()
-        trading_active = False
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/trading/stop', methods=['POST'])
-def stop_trading():
-    """Stop trading bot"""
-    global trading_active
-    
-    try:
-        if not trading_active:
-            return jsonify({'error': 'Trading is not active'}), 400
-        
-        trading_active = False
-        
-        return jsonify({
-            'success': True,
-            'message': 'Trading stopped successfully'
-        })
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+# Start/Stop endpoints removed - bot runs continuously
 
 @app.route('/api/trading/clear-pending', methods=['POST'])
 def clear_pending_trades():
@@ -928,7 +802,7 @@ def clear_pending_trades():
 
 @app.route('/api/trading/status', methods=['GET'])
 def get_trading_status():
-    """Get current trading status"""
+    """Get current trading status - bot always runs"""
     try:
         # Check if Telegram session exists
         session_file_exists = os.path.exists('session_testpob1234.session')
@@ -942,7 +816,7 @@ def get_trading_status():
         )
         
         return jsonify({
-            'active': trading_active,
+            'active': True,  # Bot always runs
             'config': {
                 'trade_amount': get_trade_amount(),
                 'is_demo': get_is_demo(),
@@ -1227,23 +1101,19 @@ def get_balance():
             'cached': True
         }), 500
 
-def run_trading_bot(is_demo, multiplier, martingale_step):
-    """Run trading bot in background with custom configuration"""
+def run_trading_bot():
+    """Run trading bot continuously - no parameters needed, reads from .env"""
     global trading_active
     
     loop = None
     try:
-        # Update trading configuration by setting environment variables (except TRADE_AMOUNT)
-        env_path = os.path.join(os.path.dirname(__file__), '.env')
-        set_key(env_path, 'IS_DEMO', str(is_demo))
-        set_key(env_path, 'MULTIPLIER', str(multiplier))
-        set_key(env_path, 'MARTINGALE_STEP', str(martingale_step))
-        
-        # Reload environment
+        # Read all config from .env
         load_dotenv(override=True)
         
-        # Get trade amount from .env
-        trade_amount = float(os.getenv('TRADE_AMOUNT', '1.0'))
+        trade_amount = get_trade_amount()
+        is_demo = get_is_demo()
+        multiplier = get_multiplier()
+        martingale_step = int(os.getenv('MARTINGALE_STEP', '0'))
         
         print(f"🚀 Starting trading bot with config:")
         print(f"   Trade Amount: ${trade_amount} (from .env)")
@@ -1285,7 +1155,7 @@ def run_trading_bot(is_demo, multiplier, martingale_step):
             
             if deleted_count > 0:
                 print(f"\n✅ Cleaned up {deleted_count} session file(s)")
-                print("💡 Session files deleted. Please restart trading and verify OTP again.")
+                print("💡 Session files deleted. Please restart server and verify OTP again.")
             else:
                 print("\n⚠️ No session files found to delete")
         else:
@@ -1340,8 +1210,8 @@ if __name__ == '__main__':
     print("   3. Set trading parameters and click Start Trading")
     print("=" * 60)
     
-    # 🔥 AUTO-START TRADING BOT ON SERVER STARTUP (Railway only)
-    # Only auto-start if not already running
+    # 🔥 AUTO-START TRADING BOT ON SERVER STARTUP
+    # Bot starts automatically and runs continuously
     def auto_start_bot():
         """Auto-start trading bot in background"""
         import time
@@ -1349,41 +1219,39 @@ if __name__ == '__main__':
         
         global trading_active, trading_thread
         
-        # Only start if not already active
-        if not trading_active:
-            try:
-                print("\n" + "=" * 60)
-                print("🤖 AUTO-STARTING TRADING BOT")
-                print("=" * 60)
+        # Always start bot
+        try:
+            print("\n" + "=" * 60)
+            print("🤖 AUTO-STARTING TRADING BOT")
+            print("=" * 60)
+            
+            # Get config from environment
+            trade_amount = get_trade_amount()
+            is_demo = get_is_demo()
+            multiplier = get_multiplier()
+            martingale_step = int(os.getenv('MARTINGALE_STEP', '0'))
+            
+            print(f"📊 Configuration:")
+            print(f"   Amount: ${trade_amount} (from .env)")
+            print(f"   Mode: {'DEMO' if is_demo else 'REAL'}")
+            print(f"   Multiplier: {multiplier}x")
+            print(f"   Starting Step: {martingale_step}")
+            print("=" * 60)
+            
+            trading_active = True
+            trading_thread = threading.Thread(
+                target=run_trading_bot,
+                daemon=True
+            )
+            trading_thread.start()
+            print("✅ Trading bot started automatically!")
+            print("🎯 Bot is now monitoring Telegram signals")
+            print("=" * 60 + "\n")
                 
-                # Get config from environment (TRADE_AMOUNT from .env only)
-                trade_amount = float(os.getenv('TRADE_AMOUNT', '1.0'))
-                is_demo = os.getenv('IS_DEMO', 'True').lower() == 'true'
-                multiplier = float(os.getenv('MULTIPLIER', '2.5'))
-                martingale_step = int(os.getenv('MARTINGALE_STEP', '0'))
-                
-                print(f"📊 Configuration:")
-                print(f"   Amount: ${trade_amount} (from .env)")
-                print(f"   Mode: {'DEMO' if is_demo else 'REAL'}")
-                print(f"   Multiplier: {multiplier}x")
-                print(f"   Starting Step: {martingale_step}")
-                print("=" * 60)
-                
-                trading_active = True
-                trading_thread = threading.Thread(
-                    target=run_trading_bot,
-                    args=(is_demo, multiplier, martingale_step),
-                    daemon=True
-                )
-                trading_thread.start()
-                print("✅ Trading bot started automatically!")
-                print("🎯 Bot is now monitoring Telegram signals")
-                print("=" * 60 + "\n")
-                    
-            except Exception as e:
-                print(f"❌ Auto-start failed: {e}")
-                print("💡 You can start manually from the web interface")
-                print("=" * 60 + "\n")
+        except Exception as e:
+            print(f"❌ Auto-start failed: {e}")
+            print("💡 Check your configuration in .env file")
+            print("=" * 60 + "\n")
     
     # Start auto-start in background thread
     auto_start_thread = threading.Thread(target=auto_start_bot, daemon=True)
