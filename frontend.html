@@ -1175,17 +1175,23 @@
             const isDemo = document.getElementById('accountType').value === 'true';
             const badge = document.getElementById('accountTypeBadge');
             const modeBadge = document.getElementById('tradingModeBadge');
+            const accountTypeDisplay = document.getElementById('accountTypeDisplay');
             
             badge.textContent = isDemo ? 'DEMO' : 'REAL';
             modeBadge.textContent = isDemo ? 'DEMO' : 'REAL';
+            accountTypeDisplay.textContent = isDemo ? 'DEMO' : 'REAL';
             
             // Update mode badge color
             if (isDemo) {
                 modeBadge.classList.remove('bg-danger/20', 'text-danger');
                 modeBadge.classList.add('bg-primary/20', 'text-primary');
+                accountTypeDisplay.classList.remove('text-danger');
+                accountTypeDisplay.classList.add('text-primary');
             } else {
                 modeBadge.classList.remove('bg-primary/20', 'text-primary');
                 modeBadge.classList.add('bg-danger/20', 'text-danger');
+                accountTypeDisplay.classList.remove('text-primary');
+                accountTypeDisplay.classList.add('text-danger');
             }
             
             // Log mode change
@@ -1296,8 +1302,9 @@
                         // Update displays
                         updateStakeDisplay();
                         updateMartingalePreview();
+                        updateAccountBadge();  // Update account type badge
                         
-                        addLog('✅ Trading config loaded from .env: $' + configData.trading.trade_amount, 'success');
+                        addLog('✅ Trading config loaded from .env: $' + configData.trading.trade_amount + ' (' + (configData.trading.is_demo ? 'DEMO' : 'REAL') + ')', 'success');
                     }
                     
                     // Update Account Information display
