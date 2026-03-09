@@ -161,9 +161,7 @@ cython_debug/
 # VS Code
 .vscode/
 
-# Session files
-*.session
-*.session-journal
+
 
 # Log files
 *.log

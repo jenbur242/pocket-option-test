@@ -435,3 +435,119 @@ Martingale Step: 1
 ✅ Result: WIN | Profit: $2.30
 🎉 WIN! Reset martingale step to 0
 💡 Ready for new asset signal
+
+============================================================
+🤖 POCKET OPTION TRADING BOT
+============================================================
+Channel: testpob1234
+Account: DEMO
+Initial Amount: $1.0
+Multiplier: 2.5x
+============================================================
+🔌 Connecting to PocketOption...
+
+============================================================
+🤖 POCKET OPTION TRADING BOT
+============================================================
+Channel: testpob1234
+Account: DEMO
+Initial Amount: $1.0
+Multiplier: 2.5x
+============================================================
+🔌 Connecting to PocketOption...
+💰 Balance: $48944.11 USD
+✅ Connected to PocketOption!
+📁 Using file session
+✅ Connected to: Test
+📊 Found 50 recent messages
+
+⏳ Waiting for signals...
+
+💰 Balance: $48944.11 USD
+✅ Connected to PocketOption!
+📁 Using file session
+❌ Telegram connection error: database is locked
+
+🔔 NEW MESSAGE: 📈 Pair: AUD/CAD OTC 
+⌛️ time: 1 min
+📥 Signal received: AUD/CAD OTC - 1 min
+
+🔔 NEW MESSAGE: Buy
+🎯 Direction received: BUY
+
+============================================================
+📊 PLACING TRADE
+============================================================
+Asset: AUDCAD_otc
+Direction: BUY
+Amount: $1.00
+Duration: 1 min
+Martingale Step: 0
+============================================================
+✅ Order placed successfully!
+   Order ID: d4ec7fe6-c7c3-4342-a7df-047b67dae570
+   Status: active
+   Placed at: 06:12:47
+   Expires at: 06:13:47
+⏳ Waiting for trade d4ec7fe6-c7c3-4342-a7df-047b67dae570 result (max 90s)...
+✅ Result: WIN | Profit: $0.92
+🎉 WIN! Reset martingale step to 0
+💡 Ready for new asset signal
+
+🔔 NEW MESSAGE: Sell
+🎯 Direction received: SELL
+
+============================================================
+📊 PLACING TRADE
+============================================================
+Asset: AUDCAD_otc
+Direction: SELL
+Amount: $1.00
+Duration: 1 min
+Martingale Step: 0
+============================================================
+✅ Order placed successfully!
+   Order ID: 9900816a-3033-4a23-a393-3f3e0f51bb5b
+   Status: active
+   Placed at: 06:13:56
+   Expires at: 06:14:56
+⏳ Waiting for trade 9900816a-3033-4a23-a393-3f3e0f51bb5b result (max 90s)...
+✅ Result: WIN | Profit: $0.92
+🎉 WIN! Reset martingale step to 0
+💡 Ready for new asset signal
+
+============================================================
+🤖 POCKET OPTION TRADING BOT
+============================================================
+Channel: testpob1234
+Account: DEMO
+Initial Amount: $1.0
+Multiplier: 2.5x
+============================================================
+🔌 Connecting to PocketOption...
+💰 Balance: $48945.95 USD
+✅ Connected to PocketOption!
+📁 Using file session
+✅ Connected to: Test
+📊 Found 50 recent messages
+
+⏳ Waiting for signals...
+
+
+============================================================
+🤖 POCKET OPTION TRADING BOT
+============================================================
+Channel: testpob1234
+Account: DEMO
+Initial Amount: $1.0
+Multiplier: 2.5x
+============================================================
+🔌 Connecting to PocketOption...
+💰 Balance: $48945.95 USD
+✅ Connected to PocketOption!
+📁 Using file session
+✅ Connected to: Test
+📊 Found 50 recent messages
+
+⏳ Waiting for signals...
+

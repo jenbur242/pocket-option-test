@@ -368,6 +368,27 @@ async def main():
         log_message(f"❌ Failed to connect to PocketOption: {e}")
         return
     
+    # 🔐 Recreate session file from environment variable if needed (Railway)
+    session_file_base64 = os.getenv('TELEGRAM_SESSION_FILE')
+    session_journal_base64 = os.getenv('TELEGRAM_SESSION_JOURNAL')
+    
+    if session_file_base64:
+        log_message("🔐 Recreating session file from environment variable...")
+        import base64
+        
+        # Recreate main session file
+        session_data = base64.b64decode(session_file_base64)
+        with open('session_testpob1234.session', 'wb') as f:
+            f.write(session_data)
+        log_message("✅ Session file recreated")
+        
+        # Recreate journal file if available
+        if session_journal_base64:
+            journal_data = base64.b64decode(session_journal_base64)
+            with open('session_testpob1234.session-journal', 'wb') as f:
+                f.write(journal_data)
+            log_message("✅ Session journal file recreated")
+    
     # Connect to Telegram
     if STRING_SESSION:
         log_message("🔐 Using string session")
