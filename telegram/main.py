@@ -206,7 +206,7 @@ async def check_trade_result(order_id: str, duration_minutes: int):
                         'profit_loss': profit,
                         'balance_before': '',
                         'balance_after': '',
-                        'multiplier': MULTIPLIER
+                        'multiplier': get_multiplier()  # Use dynamic function
                     }
                     save_trade_to_csv(csv_data)
                     break
@@ -248,7 +248,7 @@ async def place_trade(asset: str, direction: str, duration: int):
         pending_count = len(pending_trades)
         
         if pending_count > 0:
-            # Check if pending trades are stale (older than 10 minutes)
+            # Check if pending trades are stale (older than 5 minutes - reduced from 10)
             import time
             current_time = time.time()
             stale_trades = []
@@ -257,10 +257,14 @@ async def place_trade(asset: str, direction: str, duration: int):
                 # Check if trade has a timestamp
                 if 'placed_timestamp' in trade:
                     age_seconds = current_time - trade['placed_timestamp']
-                    # If trade is older than 10 minutes, consider it stale
-                    if age_seconds > 600:
+                    # If trade is older than 5 minutes, consider it stale
+                    if age_seconds > 300:
                         stale_trades.append(trade)
                         log_message(f"⚠️ Found stale pending trade (age: {age_seconds:.0f}s), removing...")
+                else:
+                    # If no timestamp, consider it stale (old format)
+                    stale_trades.append(trade)
+                    log_message(f"⚠️ Found pending trade without timestamp, removing...")
             
             # Remove stale trades
             if stale_trades:
@@ -378,9 +382,12 @@ last_direction_signal = {'asset': None, 'direction': None, 'timestamp': None}
 # Lock to prevent concurrent trade placement
 trade_placement_lock = asyncio.Lock()
 
+# Flag to track if a trade is currently being placed
+trade_in_progress = False
+
 async def process_message(message_text: str):
     """Process Telegram message and place trade if complete signal"""
-    global last_signal, last_direction_signal
+    global last_signal, last_direction_signal, trade_in_progress
     
     signal = parse_signal(message_text)
     
@@ -394,10 +401,20 @@ async def process_message(message_text: str):
     if signal['direction'] and last_signal['asset'] and last_signal['duration']:
         log_message(f"🎯 Direction received: {signal['direction']}")
         
+        # Check if trade is already in progress (before acquiring lock)
+        if trade_in_progress:
+            log_message(f"⏭️ Skipping - trade already in progress")
+            return
+        
         # Use lock to prevent concurrent trade placement
         async with trade_placement_lock:
             import time
             current_time = time.time()
+            
+            # Double-check inside lock
+            if trade_in_progress:
+                log_message(f"⏭️ Skipping - trade already in progress (double-check)")
+                return
             
             # Check if this exact signal was just processed (within 3 seconds)
             if (last_direction_signal['asset'] == last_signal['asset'] and
@@ -407,20 +424,60 @@ async def process_message(message_text: str):
                 log_message(f"⏭️ Skipping duplicate direction signal (already processed {current_time - last_direction_signal['timestamp']:.1f}s ago)")
                 return
             
-            # Update last direction signal
-            last_direction_signal['asset'] = last_signal['asset']
-            last_direction_signal['direction'] = signal['direction']
-            last_direction_signal['timestamp'] = current_time
+            # Set flag to prevent other trades
+            trade_in_progress = True
             
-            # Place trade immediately
-            await place_trade(
-                asset=last_signal['asset'],
-                direction=signal['direction'],
-                duration=last_signal['duration']
-            )
+            try:
+                # Update last direction signal
+                last_direction_signal['asset'] = last_signal['asset']
+                last_direction_signal['direction'] = signal['direction']
+                last_direction_signal['timestamp'] = current_time
+                
+                # Place trade immediately
+                await place_trade(
+                    asset=last_signal['asset'],
+                    direction=signal['direction'],
+                    duration=last_signal['duration']
+                )
+            finally:
+                # Always clear the flag when done
+                trade_in_progress = False
         
         # DON'T clear last signal - keep it for martingale on same asset
         # It will only be replaced when a new asset signal comes
+
+async def cleanup_stale_trades():
+    """Periodic task to clean up stale pending trades"""
+    global past_trades
+    
+    while True:
+        try:
+            await asyncio.sleep(60)  # Check every 60 seconds
+            
+            import time
+            current_time = time.time()
+            
+            pending_trades = [t for t in past_trades if t['result'] == 'pending']
+            if not pending_trades:
+                continue
+            
+            stale_trades = []
+            for trade in pending_trades:
+                if 'placed_timestamp' in trade:
+                    age_seconds = current_time - trade['placed_timestamp']
+                    # Remove trades older than 5 minutes
+                    if age_seconds > 300:
+                        stale_trades.append(trade)
+                else:
+                    # Remove trades without timestamp (old format)
+                    stale_trades.append(trade)
+            
+            if stale_trades:
+                past_trades[:] = [t for t in past_trades if t not in stale_trades]
+                log_message(f"🧹 Auto-cleanup: Removed {len(stale_trades)} stale pending trade(s)")
+                
+        except Exception as e:
+            log_message(f"⚠️ Cleanup task error: {e}")
 
 async def main():
     """Main function - Listen to Telegram and place trades"""
@@ -509,6 +566,10 @@ async def main():
             log_message(f"⚠️ Could not get history from {channel.title}: {e}")
     
     log_message(f"📊 Found {total_messages} recent messages across all channels")
+    
+    # Start cleanup task in background
+    asyncio.create_task(cleanup_stale_trades())
+    log_message("🧹 Started automatic stale trade cleanup (every 60s)")
     
     last_message_ids = {channel.id: 0 for channel in channels}
     

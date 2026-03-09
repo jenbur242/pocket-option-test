@@ -780,7 +780,6 @@ def start_trading():
     """
     Start trading bot
     Body: { 
-        "initial_amount": 1.0, 
         "is_demo": true, 
         "multiplier": 2.5,
         "martingale_step": 0
@@ -798,18 +797,18 @@ def start_trading():
         data = request.get_json()
         print(f"📊 Request data: {data}")
         
-        # Update trading config
-        initial_amount = data.get('initial_amount', 1.0)
+        # Get config - TRADE_AMOUNT comes from .env only
+        trade_amount = float(os.getenv('TRADE_AMOUNT', '1.0'))
         is_demo = data.get('is_demo', True)
         multiplier = data.get('multiplier', 2.5)
         martingale_step = data.get('martingale_step', 0)
         
-        print(f"💰 Config - Amount: ${initial_amount}, Mode: {'DEMO' if is_demo else 'REAL'}, Multiplier: {multiplier}x, Step: {martingale_step}")
+        print(f"💰 Config - Amount: ${trade_amount} (from .env), Mode: {'DEMO' if is_demo else 'REAL'}, Multiplier: {multiplier}x, Step: {martingale_step}")
         
         # Validate inputs
-        if initial_amount <= 0:
-            print(f"❌ Invalid amount: {initial_amount}")
-            return jsonify({'error': 'Initial amount must be greater than 0'}), 400
+        if trade_amount <= 0:
+            print(f"❌ Invalid amount: {trade_amount}")
+            return jsonify({'error': 'TRADE_AMOUNT in .env must be greater than 0'}), 400
         
         if multiplier < 1.1:
             return jsonify({'error': 'Multiplier must be at least 1.1'}), 400
@@ -842,9 +841,8 @@ def start_trading():
         
         print(f"✅ Telegram credentials validated - Phone: {telegram_phone}")
         
-        # Save config to environment for trading bot to use
+        # Save config to environment for trading bot to use (except TRADE_AMOUNT)
         env_path = os.path.join(os.path.dirname(__file__), '.env')
-        set_key(env_path, 'TRADE_AMOUNT', str(initial_amount))
         set_key(env_path, 'IS_DEMO', str(is_demo))
         set_key(env_path, 'MULTIPLIER', str(multiplier))
         set_key(env_path, 'MARTINGALE_STEP', str(martingale_step))
@@ -860,7 +858,7 @@ def start_trading():
         trading_active = True
         trading_thread = threading.Thread(
             target=run_trading_bot, 
-            args=(initial_amount, is_demo, multiplier, martingale_step),
+            args=(is_demo, multiplier, martingale_step),
             daemon=True
         )
         trading_thread.start()
@@ -871,11 +869,11 @@ def start_trading():
             'success': True,
             'message': 'Trading started successfully',
             'config': {
-                'initial_amount': initial_amount,
+                'trade_amount': trade_amount,
                 'is_demo': is_demo,
                 'multiplier': multiplier,
                 'martingale_step': martingale_step,
-                'current_trade_amount': initial_amount * (multiplier ** martingale_step)
+                'current_trade_amount': trade_amount * (multiplier ** martingale_step)
             }
         })
     
@@ -1229,15 +1227,14 @@ def get_balance():
             'cached': True
         }), 500
 
-def run_trading_bot(initial_amount, is_demo, multiplier, martingale_step):
+def run_trading_bot(is_demo, multiplier, martingale_step):
     """Run trading bot in background with custom configuration"""
     global trading_active
     
     loop = None
     try:
-        # Update trading configuration by setting environment variables
+        # Update trading configuration by setting environment variables (except TRADE_AMOUNT)
         env_path = os.path.join(os.path.dirname(__file__), '.env')
-        set_key(env_path, 'TRADE_AMOUNT', str(initial_amount))
         set_key(env_path, 'IS_DEMO', str(is_demo))
         set_key(env_path, 'MULTIPLIER', str(multiplier))
         set_key(env_path, 'MARTINGALE_STEP', str(martingale_step))
@@ -1245,12 +1242,15 @@ def run_trading_bot(initial_amount, is_demo, multiplier, martingale_step):
         # Reload environment
         load_dotenv(override=True)
         
+        # Get trade amount from .env
+        trade_amount = float(os.getenv('TRADE_AMOUNT', '1.0'))
+        
         print(f"🚀 Starting trading bot with config:")
-        print(f"   Initial Amount: ${initial_amount}")
+        print(f"   Trade Amount: ${trade_amount} (from .env)")
         print(f"   Account Type: {'DEMO' if is_demo else 'REAL'}")
         print(f"   Multiplier: {multiplier}x")
         print(f"   Starting Martingale Step: {martingale_step}")
-        print(f"   Current Trade Amount: ${initial_amount * (multiplier ** martingale_step):.2f}")
+        print(f"   Current Trade Amount: ${trade_amount * (multiplier ** martingale_step):.2f}")
         
         # Create new event loop for this thread
         loop = asyncio.new_event_loop()
@@ -1356,14 +1356,14 @@ if __name__ == '__main__':
                 print("🤖 AUTO-STARTING TRADING BOT")
                 print("=" * 60)
                 
-                # Get config from environment
-                initial_amount = float(os.getenv('TRADE_AMOUNT', '1.0'))
+                # Get config from environment (TRADE_AMOUNT from .env only)
+                trade_amount = float(os.getenv('TRADE_AMOUNT', '1.0'))
                 is_demo = os.getenv('IS_DEMO', 'True').lower() == 'true'
                 multiplier = float(os.getenv('MULTIPLIER', '2.5'))
                 martingale_step = int(os.getenv('MARTINGALE_STEP', '0'))
                 
                 print(f"📊 Configuration:")
-                print(f"   Amount: ${initial_amount}")
+                print(f"   Amount: ${trade_amount} (from .env)")
                 print(f"   Mode: {'DEMO' if is_demo else 'REAL'}")
                 print(f"   Multiplier: {multiplier}x")
                 print(f"   Starting Step: {martingale_step}")
@@ -1372,7 +1372,7 @@ if __name__ == '__main__':
                 trading_active = True
                 trading_thread = threading.Thread(
                     target=run_trading_bot,
-                    args=(initial_amount, is_demo, multiplier, martingale_step),
+                    args=(is_demo, multiplier, martingale_step),
                     daemon=True
                 )
                 trading_thread.start()
