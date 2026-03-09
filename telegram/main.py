@@ -212,13 +212,13 @@ async def check_trade_result(order_id: str, duration_minutes: int):
                 log_message(f"🔄 DRAW! No change to step {global_martingale_step}")
                 log_message(f"💡 Same asset kept: {last_signal['asset']}")
             elif result_type == 'loss':
-                if global_martingale_step < 9:
+                if global_martingale_step < 7:
                     global_martingale_step += 1
                     log_message(f"❌ LOSS! Martingale step increased to {global_martingale_step}")
                     log_message(f"💡 Same asset kept: {last_signal['asset']} - waiting for next direction")
                 else:
                     global_martingale_step = 0
-                    log_message(f"🔄 Max steps reached, reset to 0")
+                    log_message(f"🔄 Max steps reached (7), reset to 0")
                     log_message(f"💡 Same asset kept: {last_signal['asset']}")
         else:
             log_message(f"⚠️ Result timeout for order {order_id}")
@@ -233,11 +233,12 @@ async def place_trade(asset: str, direction: str, duration: int):
     duration_minutes = duration  # Rename for clarity
     
     try:
-        # Check if there are pending trades
+        # Check if there are pending trades - PREVENT DUPLICATE TRADES
         pending_count = sum(1 for trade in past_trades if trade['result'] == 'pending')
         
         if pending_count > 0:
-            log_message(f"⏸️ Skipping trade - {pending_count} pending trade(s)")
+            log_message(f"⏸️ Skipping trade - {pending_count} pending trade(s) already active")
+            log_message(f"💡 Waiting for current trade to complete before placing new one")
             return
         
         # Get client
@@ -326,9 +327,22 @@ def parse_signal(message_text: str) -> Dict:
 # Store last signal for direction matching - KEEP ASSET UNTIL WIN
 last_signal = {'asset': None, 'duration': None}
 
+# Track last processed message to prevent duplicates
+last_processed_message = {'text': None, 'timestamp': None}
+
 async def process_message(message_text: str):
     """Process Telegram message and place trade if complete signal"""
-    global last_signal
+    global last_signal, last_processed_message
+    
+    # Prevent duplicate processing of same message within 5 seconds
+    import time
+    current_time = time.time()
+    
+    if (last_processed_message['text'] == message_text and 
+        last_processed_message['timestamp'] and 
+        current_time - last_processed_message['timestamp'] < 5):
+        log_message(f"⏭️ Skipping duplicate message (already processed)")
+        return
     
     signal = parse_signal(message_text)
     
@@ -341,6 +355,10 @@ async def process_message(message_text: str):
     # If we got direction and have stored asset/duration, place trade
     if signal['direction'] and last_signal['asset'] and last_signal['duration']:
         log_message(f"🎯 Direction received: {signal['direction']}")
+        
+        # Update last processed message
+        last_processed_message['text'] = message_text
+        last_processed_message['timestamp'] = current_time
         
         # Place trade immediately
         await place_trade(

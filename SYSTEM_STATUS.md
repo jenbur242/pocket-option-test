@@ -19,9 +19,9 @@
 ### 3. Martingale Strategy
 - **Status**: ✅ Working
 - **Global Step**: Shared across all assets
-- **Step Increase**: On LOSS (up to step 9)
+- **Step Increase**: On LOSS (up to step 7)
 - **Step Reset**: On WIN
-- **Max Steps**: 9 (steps 0-9 = 10 total attempts)
+- **Max Steps**: 7 (steps 0-7 = 8 total attempts)
 - **Asset Persistence**: Keeps same asset until WIN (perfect for martingale)
 
 ### 4. Order ID Tracking

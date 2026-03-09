@@ -814,8 +814,8 @@ def start_trading():
         if multiplier < 1.1:
             return jsonify({'error': 'Multiplier must be at least 1.1'}), 400
         
-        if martingale_step < 0 or martingale_step > 10:
-            return jsonify({'error': 'Martingale step must be between 0 and 10'}), 400
+        if martingale_step < 0 or martingale_step > 8:
+            return jsonify({'error': 'Martingale step must be between 0 and 8'}), 400
         
         # Validate SSID exists based on mode
         if is_demo:
