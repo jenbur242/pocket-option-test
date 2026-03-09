@@ -551,3 +551,29 @@ Multiplier: 2.5x
 
 ⏳ Waiting for signals...
 
+
+============================================================
+🤖 POCKET OPTION TRADING BOT
+============================================================
+
+============================================================
+🤖 POCKET OPTION TRADING BOT
+============================================================
+Channels: 2 channels
+  - Test (ID: 3531425979)
+  - David Cooper | Private signals (ID: 2420379150)
+Account: DEMO
+Initial Amount: $1.0
+Multiplier: 2.5x
+============================================================
+🔌 Connecting to PocketOption...
+💰 Balance: $48947.79 USD
+✅ Connected to PocketOption!
+📁 Using file session: session_testpob1234.session
+✅ Connected to: Test (ID: 3531425979)
+✅ Connected to: David Cooper | Private signals (ID: 2420379150)
+📊 Monitoring 2 channel(s)
+📊 Found 100 recent messages across all channels
+
+⏳ Waiting for signals from ALL channels...
+

@@ -327,17 +327,17 @@ def set_ssid():
 @app.route('/api/telegram/check-session', methods=['GET'])
 def check_telegram_session():
     """
-    Check if Telegram session exists (file or environment variable)
+    Check if Telegram session exists (file or string session)
     """
     try:
-        # Check if session file exists OR if session is in environment variable
+        # Check if session file exists
         session_file = 'session_testpob1234.session'
         session_file_exists = os.path.exists(session_file)
         
-        # Check if session is stored in environment variables (Railway deployment)
-        session_env_exists = bool(os.getenv('TELEGRAM_SESSION_FILE') or os.getenv('TELEGRAM_STRING_SESSION'))
+        # Check if string session is in environment
+        session_env_exists = bool(os.getenv('TELEGRAM_STRING_SESSION'))
         
-        # Session exists if either file exists or env variable is set
+        # Session exists if either file exists or string session is set
         session_exists = session_file_exists or session_env_exists
         
         # Check if credentials are configured
@@ -351,9 +351,7 @@ def check_telegram_session():
         session_type = None
         if session_file_exists:
             session_type = 'file'
-        elif os.getenv('TELEGRAM_SESSION_FILE'):
-            session_type = 'env_file'
-        elif os.getenv('TELEGRAM_STRING_SESSION'):
+        elif session_env_exists:
             session_type = 'string'
         
         return jsonify({
@@ -361,7 +359,7 @@ def check_telegram_session():
             'credentials_configured': credentials_configured,
             'needs_otp': credentials_configured and not session_exists,
             'phone': phone if phone else None,
-            'session_type': session_type  # For debugging
+            'session_type': session_type
         })
     
     except Exception as e:
@@ -712,45 +710,27 @@ def test_telegram_connection():
         phone = os.getenv('TELEGRAM_PHONE')
         channel = os.getenv('TELEGRAM_CHANNEL', 'testpob1234')
         string_session = os.getenv('TELEGRAM_STRING_SESSION')
-        session_file_base64 = os.getenv('TELEGRAM_SESSION_FILE')
         
         if not all([api_id, api_hash, phone]):
             return jsonify({'error': 'Telegram credentials not configured'}), 400
         
         from telethon.sync import TelegramClient
         from telethon.sessions import StringSession
-        import base64
-        
-        # Recreate session file from environment if available
-        if session_file_base64 and not string_session:
-            try:
-                session_data = base64.b64decode(session_file_base64)
-                with open('session_testpob1234.session', 'wb') as f:
-                    f.write(session_data)
-                
-                # Also recreate journal if available
-                session_journal_base64 = os.getenv('TELEGRAM_SESSION_JOURNAL')
-                if session_journal_base64:
-                    journal_data = base64.b64decode(session_journal_base64)
-                    with open('session_testpob1234.session-journal', 'wb') as f:
-                        f.write(journal_data)
-            except Exception as e:
-                return jsonify({'error': f'Failed to recreate session file: {str(e)}'}), 400
         
         async def test_connection():
-            # Priority: 1. String session, 2. File session (recreated or local)
+            # Use string session if available, otherwise use file session
             if string_session:
                 client = TelegramClient(StringSession(string_session), api_id, api_hash)
                 session_type = 'string'
             else:
                 client = TelegramClient('session_testpob1234', api_id, api_hash)
-                session_type = 'file (recreated)' if session_file_base64 else 'file (local)'
+                session_type = 'file'
             
             await client.connect()
             
             if not await client.is_user_authorized():
                 await client.disconnect()
-                return {'error': 'Not authorized. Please add TELEGRAM_STRING_SESSION or TELEGRAM_SESSION_FILE to Railway variables.'}
+                return {'error': 'Not authorized. Please create session file first.'}
             
             try:
                 # Get channel entity

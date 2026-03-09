@@ -29,8 +29,11 @@ API_HASH = os.getenv('TELEGRAM_API_HASH')
 PHONE_NUMBER = os.getenv('TELEGRAM_PHONE')
 STRING_SESSION = os.getenv('TELEGRAM_STRING_SESSION')
 
-# Channel username
-CHANNEL_USERNAME = os.getenv('TELEGRAM_CHANNEL', 'testpob1234')
+# Channel usernames and IDs - Monitor BOTH channels
+CHANNELS = [
+    {'username': 'testpob1234', 'id': 3531425979, 'name': 'Test'},
+    {'username': None, 'id': 2420379150, 'name': 'David Cooper | Private signals'}
+]
 
 # Trading configuration
 TRADE_AMOUNT = float(os.getenv('TRADE_AMOUNT', '1.0'))
@@ -209,7 +212,7 @@ async def check_trade_result(order_id: str, duration_minutes: int):
                 log_message(f"🔄 DRAW! No change to step {global_martingale_step}")
                 log_message(f"💡 Same asset kept: {last_signal['asset']}")
             elif result_type == 'loss':
-                if global_martingale_step < 8:
+                if global_martingale_step < 9:
                     global_martingale_step += 1
                     log_message(f"❌ LOSS! Martingale step increased to {global_martingale_step}")
                     log_message(f"💡 Same asset kept: {last_signal['asset']} - waiting for next direction")
@@ -356,7 +359,9 @@ async def main():
     log_message("\n" + "="*60)
     log_message("🤖 POCKET OPTION TRADING BOT")
     log_message("="*60)
-    log_message(f"Channel: {CHANNEL_USERNAME}")
+    log_message(f"Channels: {len(CHANNELS)} channels")
+    for ch in CHANNELS:
+        log_message(f"  - {ch['name']} (ID: {ch['id']})")
     log_message(f"Account: {'DEMO' if IS_DEMO else 'REAL'}")
     log_message(f"Initial Amount: ${TRADE_AMOUNT}")
     log_message(f"Multiplier: {MULTIPLIER}x")
@@ -368,33 +373,12 @@ async def main():
         log_message(f"❌ Failed to connect to PocketOption: {e}")
         return
     
-    # 🔐 Recreate session file from environment variable if needed (Railway)
-    session_file_base64 = os.getenv('TELEGRAM_SESSION_FILE')
-    session_journal_base64 = os.getenv('TELEGRAM_SESSION_JOURNAL')
-    
-    if session_file_base64:
-        log_message("🔐 Recreating session file from environment variable...")
-        import base64
-        
-        # Recreate main session file
-        session_data = base64.b64decode(session_file_base64)
-        with open('session_testpob1234.session', 'wb') as f:
-            f.write(session_data)
-        log_message("✅ Session file recreated")
-        
-        # Recreate journal file if available
-        if session_journal_base64:
-            journal_data = base64.b64decode(session_journal_base64)
-            with open('session_testpob1234.session-journal', 'wb') as f:
-                f.write(journal_data)
-            log_message("✅ Session journal file recreated")
-    
-    # Connect to Telegram
+    # Connect to Telegram - use session file directly
     if STRING_SESSION:
         log_message("🔐 Using string session")
         client = TelegramClient(StringSession(STRING_SESSION), API_ID, API_HASH)
     else:
-        log_message("📁 Using file session")
+        log_message("📁 Using file session: session_testpob1234.session")
         client = TelegramClient('session_testpob1234', API_ID, API_HASH)
     
     try:
@@ -403,44 +387,75 @@ async def main():
         log_message(f"❌ Telegram connection error: {e}")
         return
     
-    try:
-        channel = await client.get_entity(CHANNEL_USERNAME)
-        log_message(f"✅ Connected to: {channel.title}")
-    except Exception as e:
-        log_message(f"❌ Error finding channel: {e}")
+    # Connect to ALL channels
+    channels = []
+    for channel_info in CHANNELS:
+        try:
+            # Try to get channel by ID first
+            if channel_info['id']:
+                try:
+                    channel = await client.get_entity(channel_info['id'])
+                    channels.append(channel)
+                    log_message(f"✅ Connected to: {channel.title} (ID: {channel_info['id']})")
+                except Exception as e:
+                    # Try by username if ID fails
+                    if channel_info['username']:
+                        log_message(f"⚠️ Failed by ID, trying username @{channel_info['username']}...")
+                        channel = await client.get_entity(channel_info['username'])
+                        channels.append(channel)
+                        log_message(f"✅ Connected to: {channel.title}")
+                    else:
+                        log_message(f"❌ Failed to connect to {channel_info['name']}: {e}")
+            elif channel_info['username']:
+                channel = await client.get_entity(channel_info['username'])
+                channels.append(channel)
+                log_message(f"✅ Connected to: {channel.title}")
+        except Exception as e:
+            log_message(f"❌ Error connecting to {channel_info['name']}: {e}")
+    
+    if not channels:
+        log_message("❌ Failed to connect to any channels")
         return
     
-    # Get recent messages (don't execute, just for context)
-    recent_time = datetime.now() - timedelta(minutes=30)
-    messages = await client(GetHistoryRequest(
-        peer=channel,
-        limit=50,
-        offset_date=recent_time,
-        offset_id=0,
-        max_id=0,
-        min_id=0,
-        add_offset=0,
-        hash=0
-    ))
+    log_message(f"📊 Monitoring {len(channels)} channel(s)")
     
-    log_message(f"📊 Found {len(messages.messages)} recent messages")
+    # Get recent messages from all channels (don't execute, just for context)
+    total_messages = 0
+    for channel in channels:
+        try:
+            recent_time = datetime.now() - timedelta(minutes=30)
+            messages = await client(GetHistoryRequest(
+                peer=channel,
+                limit=50,
+                offset_date=recent_time,
+                offset_id=0,
+                max_id=0,
+                min_id=0,
+                add_offset=0,
+                hash=0
+            ))
+            total_messages += len(messages.messages)
+        except Exception as e:
+            log_message(f"⚠️ Could not get history from {channel.title}: {e}")
     
-    last_message_id = messages.messages[0].id if messages.messages else 0
+    log_message(f"📊 Found {total_messages} recent messages across all channels")
     
-    # Listen for NEW messages
-    @client.on(events.NewMessage(chats=channel))
+    last_message_ids = {channel.id: 0 for channel in channels}
+    
+    # Listen for NEW messages from ALL channels
+    @client.on(events.NewMessage(chats=channels))
     async def handle_new_message(event):
-        nonlocal last_message_id
+        channel_title = event.chat.title if hasattr(event.chat, 'title') else 'Unknown'
         
-        if event.message.id > last_message_id:
-            last_message_id = event.message.id
+        if event.message.id > last_message_ids.get(event.chat_id, 0):
+            last_message_ids[event.chat_id] = event.message.id
             
-            log_message(f"\n🔔 NEW MESSAGE: {event.message.message[:100]}")
+            log_message(f"\n🔔 NEW MESSAGE from [{channel_title}]: {event.message.message[:100]}")
             
             # Process message and place trade if signal is complete
             await process_message(event.message.message)
     
-    log_message("\n⏳ Waiting for signals...\n")
+    log_message("\n⏳ Waiting for signals from ALL channels...\n")
     
     # Keep alive
     while True:

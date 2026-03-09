@@ -209,7 +209,7 @@ async def check_trade_result(order_id: str, duration_minutes: int):
                 log_message(f"🔄 DRAW! No change to step {global_martingale_step}")
                 log_message(f"💡 Same asset kept: {last_signal['asset']}")
             elif result_type == 'loss':
-                if global_martingale_step < 8:
+                if global_martingale_step < 9:
                     global_martingale_step += 1
                     log_message(f"❌ LOSS! Martingale step increased to {global_martingale_step}")
                     log_message(f"💡 Same asset kept: {last_signal['asset']} - waiting for next direction")
