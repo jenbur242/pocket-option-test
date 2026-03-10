@@ -21,7 +21,22 @@ from pocketoptionapi_async import AsyncPocketOptionClient
 from pocketoptionapi_async.models import OrderDirection, OrderStatus
 
 # Load environment variables
-load_dotenv()
+load_dotenv(override=True)  # Force override with .env file if exists
+
+# Check if running on Railway
+IS_RAILWAY = os.getenv('RAILWAY_ENVIRONMENT') is not None
+
+if IS_RAILWAY:
+    print("🚂 Running on Railway - Using Railway environment variables")
+else:
+    print("💻 Running locally - Using .env file")
+
+# Diagnostic: Print TRADE_AMOUNT immediately after loading
+print(f"🔍 DEBUG: TRADE_AMOUNT environment variable = '{os.getenv('TRADE_AMOUNT', 'NOT SET')}'")
+print(f"🔍 DEBUG: All TRADE_AMOUNT related vars:")
+for key in os.environ:
+    if 'TRADE' in key.upper() or 'AMOUNT' in key.upper():
+        print(f"   {key} = {os.environ[key]}")
 
 # Get credentials from environment variables
 API_ID = os.getenv('TELEGRAM_API_ID')
@@ -38,7 +53,8 @@ CHANNELS = [
 # Trading configuration - Read dynamically
 def get_trade_amount():
     """Get current trade amount from environment"""
-    return float(os.getenv('TRADE_AMOUNT', '1.0'))
+    # Default changed to 5.0 for Railway deployment
+    return float(os.getenv('TRADE_AMOUNT', '5.0'))
 
 def get_multiplier():
     """Get current multiplier from environment"""
