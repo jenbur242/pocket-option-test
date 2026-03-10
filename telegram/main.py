@@ -215,21 +215,35 @@ async def check_trade_result(order_id: str, duration_minutes: int):
             if result_type == 'win':
                 global_martingale_step = 0
                 past_trades[:] = [t for t in past_trades if t['result'] == 'pending']
+                log_message(f"\n{'='*60}")
                 log_message(f"🎉 WIN! Reset martingale step to 0")
+                log_message(f"� Next trade amount: ${get_trade_amount():.2f}")
                 log_message(f"💡 Ready for new asset signal")
+                log_message(f"{'='*60}\n")
             elif result_type == 'draw':
                 past_trades[:] = [t for t in past_trades if t.get('order_id') != order_id]
+                log_message(f"\n{'='*60}")
                 log_message(f"🔄 DRAW! No change to step {global_martingale_step}")
+                next_amount = get_trade_amount() * (get_multiplier() ** global_martingale_step)
+                log_message(f"💰 Next trade amount: ${next_amount:.2f}")
                 log_message(f"💡 Same asset kept: {last_signal['asset']}")
+                log_message(f"{'='*60}\n")
             elif result_type == 'loss':
                 if global_martingale_step < 7:
                     global_martingale_step += 1
+                    next_amount = get_trade_amount() * (get_multiplier() ** global_martingale_step)
+                    log_message(f"\n{'='*60}")
                     log_message(f"❌ LOSS! Martingale step increased to {global_martingale_step}")
+                    log_message(f"💰 Next trade amount: ${next_amount:.2f}")
                     log_message(f"💡 Same asset kept: {last_signal['asset']} - waiting for next direction")
+                    log_message(f"{'='*60}\n")
                 else:
                     global_martingale_step = 0
+                    log_message(f"\n{'='*60}")
                     log_message(f"🔄 Max steps reached (7), reset to 0")
+                    log_message(f"💰 Next trade amount: ${get_trade_amount():.2f}")
                     log_message(f"💡 Same asset kept: {last_signal['asset']}")
+                    log_message(f"{'='*60}\n")
         else:
             log_message(f"⚠️ Result timeout for order {order_id}")
             
@@ -292,11 +306,15 @@ async def place_trade(asset: str, direction: str, duration: int):
         current_step = global_martingale_step
         current_amount = trade_amount * (multiplier ** current_step)
         
-        log_message(f"💰 Trade Calculation:")
-        log_message(f"   Base Amount: ${trade_amount}")
-        log_message(f"   Multiplier: {multiplier}x")
-        log_message(f"   Current Step: {current_step}")
-        log_message(f"   Calculated Amount: ${current_amount:.2f}")
+        log_message(f"\n{'='*60}")
+        log_message(f"💰 TRADE AMOUNT CALCULATION - STEP {current_step}")
+        log_message(f"{'='*60}")
+        log_message(f"📊 Base Amount (from .env): ${trade_amount:.2f}")
+        log_message(f"📈 Multiplier: {multiplier}x")
+        log_message(f"🎯 Current Martingale Step: {current_step}")
+        log_message(f"💵 Formula: ${trade_amount:.2f} × ({multiplier}^{current_step})")
+        log_message(f"✅ FINAL TRADE AMOUNT: ${current_amount:.2f}")
+        log_message(f"{'='*60}\n")
         
         # Determine direction
         order_direction = OrderDirection.CALL if direction.upper() == 'BUY' else OrderDirection.PUT
@@ -490,9 +508,32 @@ async def main():
     for ch in CHANNELS:
         log_message(f"  - {ch['name']} (ID: {ch['id']})")
     log_message(f"Account: {'DEMO' if get_is_demo() else 'REAL'}")
-    log_message(f"Initial Amount: ${get_trade_amount()}")
+    
+    # Show exact value from environment
+    trade_amount_raw = os.getenv('TRADE_AMOUNT', 'NOT SET')
+    trade_amount_parsed = get_trade_amount()
+    log_message(f"TRADE_AMOUNT (raw): {trade_amount_raw}")
+    log_message(f"Initial Amount: ${trade_amount_parsed}")
+    
+    if trade_amount_raw == 'NOT SET':
+        log_message("⚠️  WARNING: TRADE_AMOUNT not set in environment!")
+        log_message("⚠️  Using default value of $1.0")
+    elif trade_amount_parsed == 1.0:
+        log_message("⚠️  WARNING: TRADE_AMOUNT is set to 1.0")
+        log_message("⚠️  If you want $5, update Railway environment variable")
+    
     log_message(f"Multiplier: {get_multiplier()}x")
     log_message("="*60)
+    
+    # Show martingale calculation table
+    log_message("\n" + "="*60)
+    log_message("📊 MARTINGALE AMOUNT TABLE (8 Steps)")
+    log_message("="*60)
+    multiplier = get_multiplier()
+    for step in range(8):
+        amount = trade_amount_parsed * (multiplier ** step)
+        log_message(f"Step {step}: ${amount:>10.2f}")
+    log_message("="*60 + "\n")
     
     try:
         await get_persistent_client()
