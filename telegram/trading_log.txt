@@ -40,3 +40,127 @@ Martingale Step: 0
 💡 Ready for new asset signal
 ============================================================
 
+
+============================================================
+🤖 POCKET OPTION TRADING BOT
+============================================================
+Channels: 2 channels
+  - Test (ID: 3531425979)
+  - David Cooper | Private signals (ID: 2420379150)
+Account: DEMO
+TRADE_AMOUNT (raw): 5.0
+Initial Amount: $5.0
+Multiplier: 2.5x
+============================================================
+
+============================================================
+📊 MARTINGALE AMOUNT TABLE (8 Steps)
+============================================================
+Step 0: $      5.00
+Step 1: $     12.50
+Step 2: $     31.25
+Step 3: $     78.12
+Step 4: $    195.31
+Step 5: $    488.28
+Step 6: $   1220.70
+Step 7: $   3051.76
+============================================================
+
+🔌 Connecting to PocketOption...
+
+============================================================
+🤖 POCKET OPTION TRADING BOT
+============================================================
+Channels: 2 channels
+  - Test (ID: 3531425979)
+  - David Cooper | Private signals (ID: 2420379150)
+Account: DEMO
+TRADE_AMOUNT (raw): 5.0
+Initial Amount: $5.0
+Multiplier: 2.5x
+============================================================
+
+============================================================
+📊 MARTINGALE AMOUNT TABLE (8 Steps)
+============================================================
+Step 0: $      5.00
+Step 1: $     12.50
+Step 2: $     31.25
+Step 3: $     78.12
+Step 4: $    195.31
+Step 5: $    488.28
+Step 6: $   1220.70
+Step 7: $   3051.76
+============================================================
+
+🔌 Connecting to PocketOption...
+💰 Balance: $49073.67 USD
+✅ Connected to PocketOption!
+📁 Using file session: session_testpob1234.session
+💰 Balance: $49073.67 USD
+✅ Connected to PocketOption!
+📁 Using file session: session_testpob1234.session
+❌ Telegram connection error: 
+
+============================================================
+🤖 POCKET OPTION TRADING BOT
+============================================================
+Channels: 3 channels
+  - Test (ID: 3531425979)
+  - David Cooper | Private signals (ID: 2420379150)
+  - Pocket Option Signals VIP (ID: None)
+Account: DEMO
+TRADE_AMOUNT (raw): 5.0
+Initial Amount: $5.0
+Multiplier: 2.5x
+============================================================
+
+============================================================
+📊 MARTINGALE AMOUNT TABLE (8 Steps)
+============================================================
+Step 0: $      5.00
+Step 1: $     12.50
+Step 2: $     31.25
+Step 3: $     78.12
+Step 4: $    195.31
+Step 5: $    488.28
+Step 6: $   1220.70
+Step 7: $   3051.76
+============================================================
+
+🔌 Connecting to PocketOption...
+💰 Balance: $49073.67 USD
+✅ Connected to PocketOption!
+📁 Using file session: session_testpob1234.session
+
+============================================================
+🤖 POCKET OPTION TRADING BOT
+============================================================
+Channels: 3 channels
+  - Test (ID: 3531425979)
+  - David Cooper | Private signals (ID: 2420379150)
+  - Pocket Option Signals VIP (ID: None)
+Account: DEMO
+TRADE_AMOUNT (raw): 5.0
+Initial Amount: $5.0
+Multiplier: 2.5x
+============================================================
+
+============================================================
+📊 MARTINGALE AMOUNT TABLE (8 Steps)
+============================================================
+Step 0: $      5.00
+Step 1: $     12.50
+Step 2: $     31.25
+Step 3: $     78.12
+Step 4: $    195.31
+Step 5: $    488.28
+Step 6: $   1220.70
+Step 7: $   3051.76
+============================================================
+
+🔌 Connecting to PocketOption...
+💰 Balance: $49073.67 USD
+✅ Connected to PocketOption!
+📁 Using file session: session_testpob1234.session
+❌ Telegram connection error: 

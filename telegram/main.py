@@ -47,7 +47,8 @@ STRING_SESSION = os.getenv('TELEGRAM_STRING_SESSION')
 # Channel usernames and IDs - Monitor BOTH channels
 CHANNELS = [
     {'username': 'testpob1234', 'id': 3531425979, 'name': 'Test'},
-    {'username': None, 'id': 2420379150, 'name': 'David Cooper | Private signals'}
+    {'username': None, 'id': 2420379150, 'name': 'David Cooper | Private signals'},
+    {'username': 'Pocket_Option_Signals_Vip', 'id': None, 'name': 'Pocket Option Signals VIP'}
 ]
 
 # Trading configuration - Read dynamically
@@ -387,23 +388,69 @@ async def place_trade(asset: str, direction: str, duration: int):
         traceback.print_exc()
 
 def parse_signal(message_text: str) -> Dict:
-    """Parse signal from Telegram message - SIMPLE REGEX"""
+    """Parse signal from Telegram message - Updated for VIP channel format"""
     signal = {'asset': None, 'direction': None, 'duration': None}
     
-    # Pattern: 📈 Pair: AUD/USD OTC
-    asset_match = re.search(r'📈\s*Pair:\s*([A-Z]+/[A-Z]+(?:\s+OTC)?)', message_text, re.IGNORECASE)
-    if asset_match:
-        signal['asset'] = asset_match.group(1).strip()
+    # Asset patterns - in order of priority (as described)
+    asset_patterns = [
+        r'Pair:\s*([A-Z]+/[A-Z]+(?:\s+OTC)?)',      # "Pair: EUR/USD"
+        r'([A-Z]+/[A-Z]+(?:\s+OTC)?)',              # "EUR/USD OTC"
+        r'([A-Z]{6,}(?:\s+OTC)?)',                  # "EURUSD OTC"
+        r'([A-Z]{6,}(?:[A-Z/]+)?)'                  # "EURUSD" or similar
+    ]
     
-    # Pattern: ⌛️ time: 1 min
-    time_match = re.search(r'⌛[️]?\s*time:\s*(\d+)\s*min', message_text, re.IGNORECASE)
-    if time_match:
-        signal['duration'] = int(time_match.group(1))
+    for pattern in asset_patterns:
+        asset_match = re.search(pattern, message_text, re.IGNORECASE)
+        if asset_match:
+            signal['asset'] = asset_match.group(1).strip()
+            break
     
-    # Pattern: Buy or Sell
-    direction_match = re.search(r'^(Buy|Sell)\s*$', message_text, re.IGNORECASE | re.MULTILINE)
-    if direction_match:
-        signal['direction'] = direction_match.group(1).upper()
+    # Duration patterns - updated for VIP channel formats
+    time_patterns = [
+        r'⌛[️]?\s*time:\s*(\d+)\s*min',           # Current format with emoji
+        r'time[:\s]*(\d+)\s*min',                   # "time: 5 min"
+        r'duration[:\s]*(\d+)\s*min',               # "duration: 5 min"
+        r'(\d+)\s*min(?:ute)?s?',                   # "5 min" or "5 minutes"
+        r'⏰\s*(\d+)\s*min',                         # Clock emoji + minutes
+        r'expire[s]?:\s*(\d+)\s*min',                # expire: format
+        r'(\d+)\s*m',                               # "5 m" or "2m"
+        r'(\d+)\s*minute',                          # "5 minute"
+        r'time\s*(\d+)',                            # "time 5"
+        r'duration\s*(\d+)'                         # "duration 5"
+    ]
+    
+    for pattern in time_patterns:
+        time_match = re.search(pattern, message_text, re.IGNORECASE)
+        if time_match:
+            signal['duration'] = int(time_match.group(1))
+            break
+    
+    # Default to 2 minutes for VIP channel if no duration found
+    if signal['asset'] and not signal['duration']:
+        signal['duration'] = 2
+        log_message(f"⏰ VIP Channel: No duration found, defaulting to 2 minutes")
+    
+    # Direction patterns - in order of priority (as described)
+    direction_patterns = [
+        r'^(Buy|Sell)\s*$',                         # Exact "Buy" or "Sell"
+        r'\b(Buy|Sell|CALL|PUT)\b',                 # Anywhere in message
+        r'(Buy|CALL)',                              # Buy or CALL
+        r'(Sell|PUT)',                              # Sell or PUT
+        r'^([Bb])\s*$',                             # Single letter "B" or "b"
+        r'^([Ss])\s*$'                              # Single letter "S" or "s"
+    ]
+    
+    for pattern in direction_patterns:
+        direction_match = re.search(pattern, message_text, re.IGNORECASE | re.MULTILINE)
+        if direction_match:
+            direction = direction_match.group(1).upper()
+            # Normalize direction (as described)
+            if direction == 'B' or direction == 'CALL':
+                direction = 'BUY'
+            elif direction == 'S' or direction == 'PUT':
+                direction = 'SELL'
+            signal['direction'] = direction
+            break
     
     return signal
 
@@ -557,19 +604,24 @@ async def main():
         log_message(f"❌ Failed to connect to PocketOption: {e}")
         return
     
-    # Connect to Telegram - use session file directly
+    # Connect to Telegram - prioritize string session
     if STRING_SESSION:
-        log_message("🔐 Using string session")
-        client = TelegramClient(StringSession(STRING_SESSION), API_ID, API_HASH)
+        log_message("🔐 Using string session (no OTP required)")
+        try:
+            client = TelegramClient(StringSession(STRING_SESSION), API_ID, API_HASH)
+            await client.start()
+            log_message("✅ String session connected successfully!")
+        except Exception as e:
+            log_message(f"❌ String session failed: {e}")
+            log_message("🔄 Falling back to file session...")
+            client = TelegramClient('session_testpob1234', API_ID, API_HASH)
+            await client.start(PHONE_NUMBER)
     else:
+        log_message("⚠️ No string session found in .env")
         log_message("📁 Using file session: session_testpob1234.session")
+        log_message("💡 To avoid OTP, add TELEGRAM_STRING_SESSION to your .env")
         client = TelegramClient('session_testpob1234', API_ID, API_HASH)
-    
-    try:
         await client.start(PHONE_NUMBER)
-    except Exception as e:
-        log_message(f"❌ Telegram connection error: {e}")
-        return
     
     # Connect to ALL channels
     channels = []
